@@ -32,27 +32,23 @@
 		<scroll-view class="main" scroll-y>
 			<view class="efficiency glass" :class="{ 'glass--active': pageLoaded }">
 				<view class="card-header">
-					<text class="card-title">效率三环</text>
-					<text class="card-sub">高效、专注、可控的每日状态</text>
+					<text class="card-title">效率概览</text>
+					<text class="card-sub">用卡片快速掌握今日节奏</text>
 				</view>
-				<view class="rings">
-					<svg class="rings__canvas" viewBox="0 0 120 120">
-						<defs>
-							<linearGradient v-for="spec in ringSpecs" :key="spec.gradientId" :id="spec.gradientId" x1="1" y1="0" x2="0" y2="1">
-								<stop v-for="(color, idx) in spec.colors" :key="`${spec.id}-stop-${idx}`" :offset="`${(idx / (spec.colors.length - 1)) * 100}%`" :stop-color="color"></stop>
-							</linearGradient>
-						</defs>
-						<circle v-for="spec in ringSpecs" :key="`${spec.id}-track`" class="rings__track" cx="60" cy="60" :r="spec.radius" :stroke-width="spec.strokeWidth" :stroke="spec.trackColor"></circle>
-						<circle v-for="spec in ringSpecs" :key="spec.id" class="rings__progress" cx="60" cy="60" :r="spec.radius" :stroke-width="spec.strokeWidth" :stroke="`url(#${spec.gradientId})`" stroke-linecap="round" :stroke-dasharray="spec.dashArray" :stroke-dashoffset="spec.dashOffset" :transform="`rotate(${spec.rotation} 60 60)`"></circle>
-					</svg>
-				</view>
-				<view class="ring-legend">
-					<view class="ring-legend__item" v-for="metric in ringMetrics" :key="metric.label">
-						<view class="ring-legend__dot" :style="{ backgroundImage: metric.gradient }"></view>
-						<view class="ring-legend__texts">
-							<text class="ring-legend__label">{{ metric.label }}</text>
-							<text class="ring-legend__value">{{ metric.value }}</text>
-							<text class="ring-legend__extra">{{ metric.extra }}</text>
+				<view class="stats-grid">
+					<view class="stat-card" v-for="card in statCards" :key="card.key" :class="`stat-card--${card.key}`">
+						<view class="stat-card__halo" :style="{ backgroundImage: card.gradient }"></view>
+						<view class="stat-card__header">
+							<text class="stat-card__label">{{ card.label }}</text>
+							<text class="stat-card__value">{{ card.value }}</text>
+						</view>
+						<text class="stat-card__desc">{{ card.desc }}</text>
+						<view class="stat-card__bar">
+							<view class="stat-card__bar-fill" :style="{ width: card.progress, backgroundImage: card.gradient }"></view>
+						</view>
+						<view class="stat-card__footer">
+							<text class="stat-card__extra">{{ card.extra }}</text>
+							<text class="stat-card__status" :class="`stat-card__status--${card.status}`">{{ card.statusLabel }}</text>
 						</view>
 					</view>
 				</view>
@@ -203,52 +199,92 @@ export default {
 		expiredRatio() {
 			return this.safeRatio(this.dailyStats.expired, this.dailyStats.expiredGoal);
 		},
-		ringSpecs() {
-			const rotation = -210;
-			const maxRatio = 0.9;
-			const specs = [
-				{ id: 'outer', radius: 52, strokeWidth: 12, ratio: this.completionRatio, colors: this.ringColors.outer },
-				{ id: 'middle', radius: 36, strokeWidth: 12, ratio: this.pomodoroRatio, colors: this.ringColors.middle },
-				{ id: 'inner', radius: 20, strokeWidth: 12, ratio: this.expiredRatio, colors: this.ringColors.inner }
-			];
-			return specs.map(spec => {
-				const circumference = 2 * Math.PI * spec.radius;
-				const adjusted = this.safeRatio(spec.ratio, 1) * maxRatio;
-				return {
-					...spec,
-					circumference,
-					dashArray: circumference,
-					dashOffset: circumference * (1 - adjusted),
-					rotation,
-					gradientId: `ringGradient-${spec.id}`,
-					trackColor: this.withAlpha(spec.colors[spec.colors.length - 1], 0.18)
-				};
-			});
+		statGradients() {
+			return {
+				completion: this.buildGradientCSS(['#ff5a5f', '#ff9f1f']),
+				pomodoro: this.buildGradientCSS(['#4db2ff', '#2962ff']),
+				overdue: this.buildGradientCSS(['#7d61ff', '#c39eff']),
+				focus: this.buildGradientCSS(['#5affd0', '#39acff'])
+			};
 		},
-		ringMetrics() {
-			const gradients = {
-				outer: this.buildGradientCSS(this.ringColors.outer),
-				middle: this.buildGradientCSS(this.ringColors.middle),
-				inner: this.buildGradientCSS(this.ringColors.inner)
+		statCards() {
+			const clamp = value => Math.max(0, Math.min(1, value || 0));
+			const completionPercent = `${Math.round(clamp(this.completionRatio) * 100)}%`;
+			const pomodoroPercent = `${Math.round(clamp(this.pomodoroRatio) * 100)}%`;
+			const controlRatio = clamp(1 - this.expiredRatio);
+			const controlPercent = `${Math.round(controlRatio * 100)}%`;
+			const completionStatus = this.describeStatus(clamp(this.completionRatio));
+			const pomodoroStatus = this.describeStatus(clamp(this.pomodoroRatio));
+			const overdueStatus = this.describeStatus(controlRatio);
+			const focusRatio = clamp((clamp(this.completionRatio) + clamp(this.pomodoroRatio) + controlRatio) / 3);
+			const focusPercent = `${Math.round(focusRatio * 100)}%`;
+			const focusStatus = this.describeStatus(focusRatio);
+			const statusLabels = {
+				completion: {
+					good: '状态良好',
+					warn: '保持节奏',
+					alert: '需要加速'
+				},
+				pomodoro: {
+					good: '节奏稳定',
+					warn: '稍微加把劲',
+					alert: '专注时间不足'
+				},
+				overdue: {
+					good: '风险可控',
+					warn: '留意潜在过期',
+					alert: '尽快处理过期任务'
+				},
+				focus: {
+					good: '节奏协调',
+					warn: '注意平衡',
+					alert: '抓紧调整状态'
+				}
 			};
 			return [
 				{
+					key: 'completion',
 					label: '任务完成度',
-					gradient: gradients.outer,
-					value: `${(this.completionRatio * 100).toFixed(0)}%`,
-					extra: `${this.dailyStats.completed}/${this.dailyStats.active} 未过期`
+					value: completionPercent,
+					desc: '完成更多任务，保持输出节奏',
+					extra: `已完成 ${this.dailyStats.completed} / ${this.dailyStats.active} 项`,
+					progress: completionPercent,
+					gradient: this.statGradients.completion,
+					status: completionStatus,
+					statusLabel: statusLabels.completion[completionStatus]
 				},
 				{
-					label: '番茄进度',
-					gradient: gradients.middle,
-					value: `${(this.pomodoroRatio * 100).toFixed(0)}%`,
-					extra: `${this.dailyStats.pomodoro}/${this.dailyStats.pomodoroGoal} 目标`
+					key: 'pomodoro',
+					label: '番茄执行',
+					value: pomodoroPercent,
+					desc: '番茄执行次数体现专注投入',
+					extra: `${this.dailyStats.pomodoro}/${this.dailyStats.pomodoroGoal} 个番茄`,
+					progress: pomodoroPercent,
+					gradient: this.statGradients.pomodoro,
+					status: pomodoroStatus,
+					statusLabel: statusLabels.pomodoro[pomodoroStatus]
 				},
 				{
+					key: 'overdue',
 					label: '过期控制',
-					gradient: gradients.inner,
-					value: `${(this.expiredRatio * 100).toFixed(0)}%`,
-					extra: `${this.dailyStats.expired}/${this.dailyStats.expiredGoal} 目标`
+					value: controlPercent,
+					desc: '保持任务不过期，节奏才更轻松',
+					extra: `仅有 ${this.dailyStats.expired} 项过期 (目标 ≤ ${this.dailyStats.expiredGoal})`,
+					progress: controlPercent,
+					gradient: this.statGradients.overdue,
+					status: overdueStatus,
+					statusLabel: statusLabels.overdue[overdueStatus]
+				},
+				{
+					key: 'focus',
+					label: '效率平衡',
+					value: focusPercent,
+					desc: '综合完成、专注与过期控制的平衡指数',
+					extra: `综合得分 ${focusPercent}`,
+					progress: focusPercent,
+					gradient: this.statGradients.focus,
+					status: focusStatus,
+					statusLabel: statusLabels.focus[focusStatus]
 				}
 			];
 		},
@@ -260,13 +296,6 @@ export default {
 			const month = date.getMonth() + 1;
 			const day = date.getDate();
 			return `${month}月${day}日`;
-		},
-		ringColors() {
-			return {
-				outer: ['#ff5a5f', '#ff7d4f', '#ffb349'],
-				middle: ['#ffcf52', '#ffb63a', '#ff9f1f'],
-				inner: ['#4db2ff', '#3f8cff', '#2962ff']
-			};
 		},
 		canSubmit() {
 			return this.form.title && this.form.deadline;
@@ -286,28 +315,20 @@ export default {
 			}).join(', ');
 			return `linear-gradient(135deg, ${stops})`;
 		},
+		describeStatus(ratio) {
+			if (ratio >= 0.85) {
+				return 'good';
+			}
+			if (ratio >= 0.55) {
+				return 'warn';
+			}
+			return 'alert';
+		},
 		activateNav(key) {
 			if (this.activeNav === key) {
 				return;
 			}
 			this.activeNav = key;
-		},
-		withAlpha(color, alpha = 1) {
-			if (!color || typeof color !== 'string') {
-				return `rgba(255,255,255,${alpha})`;
-			}
-			const hex = color.replace('#', '');
-			if (hex.length !== 6) {
-				return `rgba(255,255,255,${alpha})`;
-			}
-			const value = parseInt(hex, 16);
-			if (Number.isNaN(value)) {
-				return `rgba(255,255,255,${alpha})`;
-			}
-			const r = (value >> 16) & 255;
-			const g = (value >> 8) & 255;
-			const b = value & 255;
-			return `rgba(${r},${g},${b},${alpha})`;
 		},
 		safeRatio(numerator, denominator) {
 			if (!denominator) {
@@ -567,117 +588,128 @@ export default {
 	color: rgba(255,255,255,0.65);
 }
 
-.rings {
+
+.stats-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 26rpx;
+}
+
+.stat-card {
 	position: relative;
-	width: 520rpx;
-	height: 520rpx;
-	margin: 0 auto;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
-
-.rings__canvas {
-	width: 100%;
-	height: 100%;
-}
-
-.rings__track,
-.rings__progress {
-	fill: none;
-	transition: stroke-dashoffset 0.9s cubic-bezier(0.16, 1, 0.3, 1),
-		stroke 0.6s ease;
-}
-
-.rings__track {
-	stroke-linecap: round;
-	opacity: 0.35;
-}
-
-.rings__progress {
-	stroke-linecap: round;
-	filter: drop-shadow(0 8rpx 24rpx rgba(0,0,0,0.35));
-}
-
-.rings__center {
-	position: absolute;
-	left: 50%;
-	top: 50%;
-	transform: translate(-50%, -50%);
-	text-align: center;
+	padding: 28rpx;
+	border-radius: 26rpx;
+	background: rgba(255,255,255,0.06);
+	border: 1rpx solid rgba(255,255,255,0.1);
 	display: flex;
 	flex-direction: column;
-	gap: 10rpx;
-	padding: 28rpx 22rpx;
-	border-radius: 26rpx;
-	background: rgba(15, 27, 43, 0.32);
-	backdrop-filter: blur(18rpx);
-	border: 1rpx solid rgba(255,255,255,0.1);
-	box-shadow: 0 28rpx 60rpx rgba(6, 14, 26, 0.55);
+	gap: 18rpx;
+	box-shadow: 0 18rpx 48rpx rgba(6, 14, 26, 0.32);
+	transform: translateY(0);
+	transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+		box-shadow 0.35s ease;
 }
 
-.rings__value {
-	font-size: 62rpx;
-	font-weight: 700;
-	letter-spacing: 4rpx;
-	color: #fefefe;
-	text-shadow: 0 12rpx 28rpx rgba(0,0,0,0.35);
+.stat-card:active {
+	transform: translateY(6rpx);
+	box-shadow: 0 12rpx 28rpx rgba(6, 14, 26, 0.28);
 }
 
-.rings__desc {
+.stat-card__halo {
+	position: absolute;
+	left: 50%;
+	top: -18rpx;
+	transform: translateX(-50%);
+	width: 110rpx;
+	height: 10rpx;
+	border-radius: 999rpx;
+	background-size: 100%;
+	opacity: 0.9;
+	filter: blur(0.5px);
+}
+
+.stat-card__header {
+	display: flex;
+	justify-content: space-between;
+	align-items: baseline;
+}
+
+.stat-card__label {
 	font-size: 28rpx;
-	color: rgba(255,255,255,0.85);
+	color: rgba(255,255,255,0.75);
 }
 
-.rings__extra {
-	font-size: 22rpx;
+.stat-card__value {
+	font-size: 48rpx;
+	font-weight: 700;
+	color: #fefefe;
+}
+
+.stat-card__desc {
+	font-size: 24rpx;
 	color: rgba(255,255,255,0.62);
 }
 
-.ring-legend {
-	margin-top: 36rpx;
+.stat-card__bar {
+	position: relative;
+	height: 18rpx;
+	border-radius: 12rpx;
+	background: rgba(255,255,255,0.12);
+	overflow: hidden;
+}
+
+.stat-card__bar-fill {
+	position: absolute;
+	left: 0;
+	top: 0;
+	height: 100%;
+	border-radius: 12rpx;
+	background-size: 140%;
+	transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.stat-card__footer {
 	display: flex;
-	flex-wrap: wrap;
 	justify-content: space-between;
-	gap: 18rpx;
-}
-
-.ring-legend__item {
-	flex: 1 1 30%;
-	display: flex;
 	align-items: center;
-	gap: 16rpx;
-	justify-content: center;
-	text-align: left;
-}
-
-.ring-legend__dot {
-	width: 20rpx;
-	height: 20rpx;
-	border-radius: 50%;
-	box-shadow: 0 4rpx 10rpx rgba(0,0,0,0.25);
-}
-
-.ring-legend__texts {
-	display: flex;
-	flex-direction: column;
-	gap: 6rpx;
-	align-items: flex-start;
-}
-
-.ring-legend__label {
-	font-size: 26rpx;
-	color: rgba(255,255,255,0.82);
-}
-
-.ring-legend__value {
-	font-size: 32rpx;
-	font-weight: 600;
-}
-
-.ring-legend__extra {
 	font-size: 22rpx;
-	color: rgba(255,255,255,0.58);
+	color: rgba(255,255,255,0.55);
+}
+
+.stat-card__status {
+	padding: 6rpx 16rpx;
+	border-radius: 999rpx;
+	font-size: 22rpx;
+	font-weight: 500;
+	border: 1rpx solid transparent;
+}
+
+.stat-card__status--good {
+	color: #74f7ca;
+	border-color: rgba(116,247,202,0.35);
+	background: rgba(116,247,202,0.12);
+}
+
+.stat-card__status--warn {
+	color: #ffd666;
+	border-color: rgba(255,214,102,0.35);
+	background: rgba(255,214,102,0.12);
+}
+
+.stat-card__status--alert {
+	color: #ff7b8a;
+	border-color: rgba(255,123,138,0.35);
+	background: rgba(255,123,138,0.12);
+}
+
+@media screen and (max-width: 700px) {
+	.stats-grid {
+		grid-template-columns: repeat(auto-fit, minmax(260rpx, 1fr));
+	}
+
+	.stat-card {
+		padding: 24rpx;
+	}
 }
 
 .tasks {
