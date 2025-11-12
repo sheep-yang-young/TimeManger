@@ -60,11 +60,14 @@
 					<text class="card-sub">{{ summaryLabel }}</text>
 				</view>
 				<view v-for="task in tasks" :key="task.id" class="task" :class="{ 'task--done': task.done, 'task--expired': task.expired }">
-					<view class="task__info">
-						<text class="task__title">{{ task.title }}</text>
-						<text class="task__deadline">{{ task.deadline }}</text>
+					<view class="task__info" @tap="toggleTaskDone(task)">
+						<text class="task__title" :class="{ 'task__title--strikethrough': task.done }">{{ task.title }}</text>
+						<text class="task__deadline" :class="{ 'task__deadline--strikethrough': task.done }">{{ task.deadline }}</text>
 					</view>
-					<switch :checked="task.done" @change="onTaskToggle(task, $event)"></switch>
+					<view class="task__actions">
+						<text class="task__action-btn task__action-btn--edit" @tap="editTask(task)">✎</text>
+						<text class="task__action-btn task__action-btn--delete" @tap="deleteTask(task)">×</text>
+					</view>
 				</view>
 				<view v-if="!tasks.length" class="empty">
 					<text class="empty__tip">还没有任务，点击右下角添加吧</text>
@@ -112,6 +115,24 @@
 			<button class="sheet__action" type="primary" :disabled="!canSubmit" @tap="confirmTask">添加任务</button>
 		</view>
 
+		<view class="sheet-mask" v-if="showEditSheet" @tap="closeEditSheet"></view>
+		<view class="sheet glass" :class="{ 'sheet--open': showEditSheet }" @touchmove.stop.prevent>
+			<view class="sheet__handle"></view>
+			<text class="sheet__title">编辑任务</text>
+			<view class="form-field">
+				<text class="form-label">任务名称</text>
+				<input class="form-input" placeholder="输入任务标题" v-model="form.title" />
+			</view>
+			<view class="form-field form-field--select" @tap="openDeadlinePicker">
+				<text class="form-label">截止时间</text>
+				<view class="form-value">
+					<text>{{ form.deadline || '请选择截止时间' }}</text>
+					<text class="form-arrow">></text>
+				</view>
+			</view>
+			<button class="sheet__action" type="primary" :disabled="!canSubmit" @tap="confirmEditTask">保存修改</button>
+		</view>
+
 		<view class="deadline" :class="{ 'deadline--open': showDeadlinePicker }" @touchmove.stop.prevent>
 			<view class="deadline__header">
 				<text class="deadline__title">选择截止时间</text>
@@ -139,7 +160,9 @@ export default {
 			pageLoaded: false,
 			showSideMenu: false,
 			showAddSheet: false,
+			showEditSheet: false,
 			showDeadlinePicker: false,
+			editingTask: null,
 			dailyStats: {
 				completed: 5,
 				active: 9,
@@ -355,6 +378,10 @@ export default {
 		closeAddSheet() {
 			this.showAddSheet = false;
 			this.showDeadlinePicker = false;
+			// Reset form
+			this.form.title = '';
+			this.form.deadline = '';
+			this.form.tomatoes = 3;
 		},
 		openDeadlinePicker() {
 			this.showDeadlinePicker = true;
@@ -390,6 +417,38 @@ export default {
 				this.dailyStats.completed = Math.max(this.dailyStats.completed - 1, 0);
 			}
 		},
+		toggleTaskDone(task) {
+			task.done = !task.done;
+			if (task.done) {
+				this.dailyStats.completed += 1;
+			} else {
+				this.dailyStats.completed = Math.max(this.dailyStats.completed - 1, 0);
+			}
+		},
+		editTask(task) {
+			this.editingTask = task;
+			this.form.title = task.title;
+			this.form.deadline = task.deadline;
+			this.showEditSheet = true;
+		},
+		deleteTask(task) {
+			uni.showModal({
+				title: '确认删除',
+				content: '确定要删除这个任务吗？',
+				success: (res) => {
+					if (res.confirm) {
+						const index = this.tasks.findIndex(t => t.id === task.id);
+						if (index !== -1) {
+							this.tasks.splice(index, 1);
+							this.dailyStats.active = Math.max(this.dailyStats.active - 1, 0);
+							if (task.done) {
+								this.dailyStats.completed = Math.max(this.dailyStats.completed - 1, 0);
+							}
+						}
+					}
+				}
+			});
+		},
 		confirmTask() {
 			if (!this.canSubmit) {
 				return;
@@ -407,6 +466,27 @@ export default {
 			this.form.deadline = '';
 			this.form.tomatoes = 3;
 			this.closeAddSheet();
+		},
+		confirmEditTask() {
+			if (!this.canSubmit || !this.editingTask) {
+				return;
+			}
+			this.editingTask.title = this.form.title;
+			this.editingTask.deadline = this.form.deadline;
+			this.form.title = '';
+			this.form.deadline = '';
+			this.form.tomatoes = 3;
+			this.editingTask = null;
+			this.closeEditSheet();
+		},
+		closeEditSheet() {
+			this.showEditSheet = false;
+			this.showDeadlinePicker = false;
+			this.editingTask = null;
+			// Reset form
+			this.form.title = '';
+			this.form.deadline = '';
+			this.form.tomatoes = 3;
 		}
 	}
 };
@@ -744,16 +824,70 @@ export default {
 	display: flex;
 	flex-direction: column;
 	gap: 8rpx;
+	flex: 1;
+	cursor: pointer;
 }
 
 .task__title {
 	font-size: 30rpx;
 	font-weight: 500;
+	transition: opacity 0.3s ease;
+}
+
+.task__title--strikethrough {
+	text-decoration: line-through;
+	opacity: 0.6;
 }
 
 .task__deadline {
 	font-size: 24rpx;
 	color: rgba(255,255,255,0.6);
+	transition: opacity 0.3s ease;
+}
+
+.task__deadline--strikethrough {
+	text-decoration: line-through;
+	opacity: 0.5;
+}
+
+.task__actions {
+	display: flex;
+	gap: 20rpx;
+	align-items: center;
+	margin-left: 20rpx;
+}
+
+.task__action-btn {
+	width: 60rpx;
+	height: 60rpx;
+	border-radius: 30rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 32rpx;
+	background: rgba(255,255,255,0.08);
+	border: 1rpx solid rgba(255,255,255,0.12);
+	transition: all 0.25s ease;
+	cursor: pointer;
+}
+
+.task__action-btn--edit {
+	color: #6ecbff;
+}
+
+.task__action-btn--edit:active {
+	background: rgba(110,203,255,0.2);
+	transform: scale(0.9);
+}
+
+.task__action-btn--delete {
+	color: #ff7b8a;
+	font-size: 48rpx;
+}
+
+.task__action-btn--delete:active {
+	background: rgba(255,123,138,0.2);
+	transform: scale(0.9);
 }
 
 .empty {
@@ -851,16 +985,15 @@ export default {
 	position: fixed;
 	left: 0;
 	right: 0;
-	bottom: -120%;
+	bottom: 0;
 	padding: 42rpx 40rpx 90rpx;
 	border-radius: 46rpx 46rpx 0 0;
 	z-index: 5;
-	transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), bottom 0s;
-	transform: translateY(0);
+	transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+	transform: translateY(120%);
 }
 
 .sheet--open {
-	bottom: 0;
 	transform: translateY(0);
 }
 
@@ -949,17 +1082,16 @@ export default {
 	position: fixed;
 	left: 0;
 	right: 0;
-	bottom: -120%;
+	bottom: 0;
 	background: rgba(18, 30, 45, 0.95);
 	border-radius: 46rpx 46rpx 0 0;
 	padding: 34rpx 36rpx 120rpx;
 	z-index: 6;
-	transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), bottom 0s;
-	transform: translateY(0);
+	transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+	transform: translateY(120%);
 }
 
 .deadline--open {
-	bottom: 0;
 	transform: translateY(0);
 }
 
