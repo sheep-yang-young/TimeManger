@@ -985,16 +985,15 @@ export default {
 	position: fixed;
 	left: 0;
 	right: 0;
-	bottom: -120%;
+	bottom: 0;
 	padding: 42rpx 40rpx 90rpx;
 	border-radius: 46rpx 46rpx 0 0;
 	z-index: 5;
-	transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), bottom 0s;
-	transform: translateY(0);
+	transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+	transform: translateY(120%);
 }
 
 .sheet--open {
-	bottom: 0;
 	transform: translateY(0);
 }
 
@@ -1083,17 +1082,16 @@ export default {
 	position: fixed;
 	left: 0;
 	right: 0;
-	bottom: -120%;
+	bottom: 0;
 	background: rgba(18, 30, 45, 0.95);
 	border-radius: 46rpx 46rpx 0 0;
 	padding: 34rpx 36rpx 120rpx;
 	z-index: 6;
-	transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), bottom 0s;
-	transform: translateY(0);
+	transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+	transform: translateY(120%);
 }
 
 .deadline--open {
-	bottom: 0;
 	transform: translateY(0);
 }
 
