@@ -991,10 +991,12 @@ export default {
 	z-index: 12;
 	transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 	transform: translateY(120%);
+	pointer-events: none;
 }
 
 .sheet--open {
 	transform: translateY(0);
+	pointer-events: auto;
 }
 
 .sheet__handle {
@@ -1089,10 +1091,12 @@ export default {
 	z-index: 13;
 	transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 	transform: translateY(120%);
+	pointer-events: none;
 }
 
 .deadline--open {
 	transform: translateY(0);
+	pointer-events: auto;
 }
 
 .deadline__header {
