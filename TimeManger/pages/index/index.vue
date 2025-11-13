@@ -80,7 +80,7 @@
 				class="bottom-bar__item"
 				v-for="item in bottomNavItems"
 				:key="item.key"
-				:class="{ 'bottom-bar__item--active': activeNav === item.key, 'bottom-bar__item--disabled': !item.available }"
+				:class="{ 'bottom-bar__item--active': activeNav === item.key }"
 				@tap="onBottomNavTap(item)"
 			>
 				<text class="bottom-bar__icon">{{ item.icon }}</text>
@@ -205,11 +205,12 @@ export default {
 				{ label: '数据同步', tip: 'HarmonyOS 多端共享' }
 			],
 			bottomNavItems: [
-				{ key: 'today', label: '今日', icon: '◎', available: true },
-				{ key: 'tracking', label: '追踪', icon: '◇', available: false },
-				{ key: 'mine', label: '我的', icon: '△', available: false }
+				{ key: 'today', label: '今日', icon: '◎', target: '/pages/index/index' },
+				{ key: 'tracking', label: '番茄钟', icon: '◴', target: '/pages/pomodoro/index' },
+				{ key: 'mine', label: '我的', icon: '△', target: '' }
 			],
-			activeNav: 'today'
+			activeNav: 'today',
+			pomodoroListener: null
 		};
 	},
 	computed: {
@@ -326,9 +327,17 @@ export default {
 	},
 	onLoad() {
 		uni.hideTabBar({ animation: false });
+		this.syncPomodoroCount();
+		this.registerPomodoroListener();
 		setTimeout(() => {
 			this.pageLoaded = true;
 		}, 80);
+	},
+	onShow() {
+		this.syncPomodoroCount();
+	},
+	onUnload() {
+		this.unregisterPomodoroListener();
 	},
 	methods: {
 		buildGradientCSS(colors) {
@@ -346,12 +355,6 @@ export default {
 				return 'warn';
 			}
 			return 'alert';
-		},
-		activateNav(key) {
-			if (this.activeNav === key) {
-				return;
-			}
-			this.activeNav = key;
 		},
 		safeRatio(numerator, denominator) {
 			if (!denominator) {
@@ -396,14 +399,19 @@ export default {
 			this.form.tomatoes = event.detail.value;
 		},
 		onBottomNavTap(item) {
-			if (!item.available) {
+			if (item.key === this.activeNav) {
+				return;
+			}
+			if (item.key === 'mine') {
 				uni.showToast({
 					title: '敬请期待',
 					icon: 'none'
 				});
 				return;
 			}
-			this.activateNav(item.key);
+			if (item.target) {
+				uni.switchTab({ url: item.target });
+			}
 		},
 		onTaskToggle(task, event) {
 			const checked = event.detail.value;
@@ -487,6 +495,46 @@ export default {
 			this.form.title = '';
 			this.form.deadline = '';
 			this.form.tomatoes = 3;
+		},
+		registerPomodoroListener() {
+			if (this.pomodoroListener) {
+				return;
+			}
+			this.pomodoroListener = () => {
+				this.syncPomodoroCount();
+			};
+			uni.$on('pomodoro-updated', this.pomodoroListener);
+		},
+		unregisterPomodoroListener() {
+			if (!this.pomodoroListener) {
+				return;
+			}
+			uni.$off('pomodoro-updated', this.pomodoroListener);
+			this.pomodoroListener = null;
+		},
+		syncPomodoroCount() {
+			const store = this.readPomodoroStore();
+			const key = this.buildTodayKey();
+			const value = store[key];
+			this.dailyStats.pomodoro = typeof value === 'number' ? value : 0;
+		},
+		readPomodoroStore() {
+			try {
+				const stored = uni.getStorageSync('pomodoroCounts');
+				if (stored && typeof stored === 'object') {
+					return stored;
+				}
+			} catch (err) {
+				console.warn('读取番茄统计失败', err);
+			}
+			return {};
+		},
+		buildTodayKey() {
+			const date = new Date();
+			const year = date.getFullYear();
+			const month = String(date.getMonth() + 1).padStart(2, '0');
+			const day = String(date.getDate()).padStart(2, '0');
+			return `${year}-${month}-${day}`;
 		}
 	}
 };
@@ -989,14 +1037,16 @@ export default {
 	padding: 42rpx 40rpx 90rpx;
 	border-radius: 46rpx 46rpx 0 0;
 	z-index: 12;
-	transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+	transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease;
 	transform: translateY(120%);
 	pointer-events: none;
+	opacity: 0;
 }
 
 .sheet--open {
 	transform: translateY(0);
 	pointer-events: auto;
+	opacity: 1;
 }
 
 .sheet__handle {

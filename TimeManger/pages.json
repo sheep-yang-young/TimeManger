@@ -7,6 +7,14 @@
 				"navigationStyle": "custom",
 				"enablePullDownRefresh": false
 			}
+		},
+		{
+			"path": "pages/pomodoro/index",
+			"style": {
+				"navigationBarTitleText": "番茄钟",
+				"navigationStyle": "custom",
+				"enablePullDownRefresh": false
+			}
 		}
 	],
 	"globalStyle": {
@@ -28,8 +36,8 @@
 				"selectedIconPath": "static/tabbar/home-active.png"
 			},
 			{
-				"pagePath": "pages/index/index",
-				"text": "统计",
+				"pagePath": "pages/pomodoro/index",
+				"text": "番茄钟",
 				"iconPath": "static/tabbar/stats.png",
 				"selectedIconPath": "static/tabbar/stats-active.png"
 			},
