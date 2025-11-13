@@ -977,7 +977,7 @@ export default {
 	height: 100%;
 	background: rgba(10,17,28,0.55);
 	backdrop-filter: blur(6rpx);
-	z-index: 4;
+	z-index: 11;
 	animation: fade-in 0.4s ease;
 }
 
@@ -988,7 +988,7 @@ export default {
 	bottom: 0;
 	padding: 42rpx 40rpx 90rpx;
 	border-radius: 46rpx 46rpx 0 0;
-	z-index: 5;
+	z-index: 12;
 	transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 	transform: translateY(120%);
 }
@@ -1086,7 +1086,7 @@ export default {
 	background: rgba(18, 30, 45, 0.95);
 	border-radius: 46rpx 46rpx 0 0;
 	padding: 34rpx 36rpx 120rpx;
-	z-index: 6;
+	z-index: 13;
 	transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 	transform: translateY(120%);
 }
