@@ -65,8 +65,8 @@
 						<text class="task__deadline" :class="{ 'task__deadline--strikethrough': task.done }">{{ task.deadline }}</text>
 					</view>
 					<view class="task__actions">
-						<text class="task__action-btn task__action-btn--edit" @tap="editTask(task)">✎</text>
-						<text class="task__action-btn task__action-btn--delete" @tap="deleteTask(task)">×</text>
+						<text class="task__action-btn task__action-btn--edit" @tap.stop="editTask(task)">✎</text>
+						<text class="task__action-btn task__action-btn--delete" @tap.stop="deleteTask(task)">×</text>
 					</view>
 				</view>
 				<view v-if="!tasks.length" class="empty">
@@ -88,7 +88,7 @@
 			</view>
 		</view>
 
-		<view class="fab" :class="{ 'fab--pulse': showAddSheet }" @tap="toggleAddSheet">
+		<view class="fab" :class="{ 'fab--pulse': showAddSheet }" @tap.stop="toggleAddSheet">
 			<text class="fab__icon">+</text>
 		</view>
 
@@ -112,7 +112,7 @@
 				<slider class="form-slider" min="1" max="12" step="1" :value="form.tomatoes" activeColor="#6ecbff" backgroundColor="rgba(255,255,255,0.15)" @change="onTomatoChange"></slider>
 				<text class="slider-value">{{ form.tomatoes }} 个</text>
 			</view>
-			<button class="sheet__action" type="primary" :disabled="!canSubmit" @tap="confirmTask">添加任务</button>
+			<button class="sheet__action" type="primary" :disabled="!canSubmit" @tap.stop="confirmTask">添加任务</button>
 		</view>
 
 		<view class="sheet-mask" v-if="showEditSheet" @tap="closeEditSheet"></view>
@@ -130,19 +130,19 @@
 					<text class="form-arrow">></text>
 				</view>
 			</view>
-			<button class="sheet__action" type="primary" :disabled="!canSubmit" @tap="confirmEditTask">保存修改</button>
+			<button class="sheet__action" type="primary" :disabled="!canSubmit" @tap.stop="confirmEditTask">保存修改</button>
 		</view>
 
 		<view class="deadline" :class="{ 'deadline--open': showDeadlinePicker }" @touchmove.stop.prevent>
 			<view class="deadline__header">
 				<text class="deadline__title">选择截止时间</text>
-				<text class="deadline__close" @tap="closeDeadlinePicker">完成</text>
+				<text class="deadline__close" @tap.stop="closeDeadlinePicker">完成</text>
 			</view>
 			<scroll-view class="deadline__body" scroll-y>
 				<view class="deadline-group" v-for="group in deadlineOptions" :key="group.label">
 					<text class="deadline-group__label">{{ group.label }}</text>
 					<view class="deadline-group__items">
-						<view class="deadline-option" v-for="option in group.items" :key="option.value" :class="{ 'deadline-option--active': form.deadline === option.value }" @tap="selectDeadline(option)">
+						<view class="deadline-option" v-for="option in group.items" :key="option.value" :class="{ 'deadline-option--active': form.deadline === option.value }" @tap.stop="selectDeadline(option)">
 							<text class="deadline-option__text">{{ option.value }}</text>
 							<text class="deadline-option__sub">{{ option.tip }}</text>
 						</view>
@@ -955,7 +955,7 @@ export default {
 	color: #101828;
 	font-size: 90rpx;
 	font-weight: 400;
-	z-index: 4;
+	z-index: 10;
 	transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
 		box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
