@@ -214,7 +214,9 @@ export default {
 			},
 			testPanelVisible: false,
 			finishButtonPressing: false,
-			finishButtonPressTimer: null
+			finishButtonPressTimer: null,
+			foregroundServiceActive: false,
+			foregroundServicePlugin: null
 		};
 	},
 	computed: {
@@ -327,14 +329,21 @@ export default {
 	onShow() {
 		this.restoreSessions();
 		this.activeNav = 'tracking';
+		this.stopForegroundService();
 		if (this.timerState === 'running' && !this.timerInterval) {
 			this.startTimer();
 		}
 	},
 	onHide() {
+		if (this.timerState === 'running') {
+			this.startForegroundService();
+		} else {
+			this.stopForegroundService();
+		}
 		this.clearTimer();
 	},
 	onUnload() {
+		this.stopForegroundService();
 		this.clearTimer();
 	},
 	methods: {
@@ -459,12 +468,14 @@ export default {
 			this.clearTimer();
 			this.timerState = 'paused';
 			this.timerStartTimestamp = null;
+			this.stopForegroundService();
 		},
 		resetTimer(silent = false) {
 			this.clearTimer();
 			this.elapsedSeconds = 0;
 			this.timerState = 'idle';
 			this.timerStartTimestamp = null;
+			this.stopForegroundService();
 			if (this.reportVisible) {
 				this.reportVisible = false;
 			}
@@ -479,6 +490,7 @@ export default {
 			const prevMode = this.currentModeKey;
 			this.clearTimer();
 			this.timerStartTimestamp = null;
+			this.stopForegroundService();
 			this.elapsedSeconds = 0;
 			this.timerState = 'idle';
 			if (prevMode === 'focus') {
@@ -535,6 +547,59 @@ export default {
 				this.finishButtonPressTimer = null;
 			}
 			this.finishButtonPressing = false;
+		},
+		ensureForegroundServicePlugin() {
+			// #ifdef APP-PLUS
+			if (!this.foregroundServicePlugin) {
+				try {
+					this.foregroundServicePlugin = uni.requireNativePlugin('ForegroundService-Plugin');
+				} catch (err) {
+					console.warn('加载前台服务插件失败', err);
+					this.foregroundServicePlugin = null;
+				}
+			}
+			return this.foregroundServicePlugin;
+			// #endif
+			return null;
+		},
+		startForegroundService() {
+			// #ifdef APP-PLUS
+			if (this.foregroundServiceActive) {
+				return;
+			}
+			const plugin = this.ensureForegroundServicePlugin();
+			if (!plugin) {
+				return;
+			}
+			try {
+				plugin.startService({
+					title: '番茄钟守护',
+					content: '正在后台保持专注，请勿关闭应用'
+				});
+				this.foregroundServiceActive = true;
+			} catch (err) {
+				console.warn('启动后台服务失败', err);
+			}
+			// #endif
+		},
+		stopForegroundService() {
+			// #ifdef APP-PLUS
+			if (!this.foregroundServiceActive) {
+				return;
+			}
+			const plugin = this.ensureForegroundServicePlugin();
+			if (!plugin) {
+				this.foregroundServiceActive = false;
+				return;
+			}
+			try {
+				plugin.stopService();
+			} catch (err) {
+				console.warn('停止后台服务失败', err);
+			} finally {
+				this.foregroundServiceActive = false;
+			}
+			// #endif
 		},
 		onBottomNavTap(item) {
 			if (item.key === this.activeNav) {
@@ -635,6 +700,7 @@ export default {
 		},
 		finalizePlan({ completed }) {
 			this.hideTesterPanel();
+			this.stopForegroundService();
 			this.clearTimer();
 			this.timerState = 'idle';
 			this.elapsedSeconds = 0;
