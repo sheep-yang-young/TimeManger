@@ -36,13 +36,20 @@
 
 				<view class="timer__footer">
 					<text class="timer__status">{{ statusText }}</text>
-					<button class="timer__button timer__button--ghost" @tap="finishPlanEarly" :disabled="!canFinishPlan">
+					<button
+						class="timer__button timer__button--ghost"
+						:class="{ 'timer__button--pressing': finishButtonPressing }"
+						:disabled="!canFinishPlan"
+						@touchstart="onFinishButtonTouchStart"
+						@touchend="onFinishButtonTouchEnd"
+						@touchcancel="onFinishButtonTouchEnd"
+					>
 						结束计划
 					</button>
 				</view>
 			</view>
 
-			<view class="settings glass" :class="{ 'glass--active': pageLoaded }">
+			<view class="settings glass" :class="{ 'glass--active': pageLoaded }" v-show="!settingsLocked">
 				<view class="settings__header">
 					<text class="settings__title">自定义番茄节奏</text>
 					<text class="settings__subtitle">设定专注与休息时长，打造自己的节奏</text>
@@ -177,6 +184,7 @@ export default {
 			currentModeKey: 'focus',
 			timerState: 'idle',
 			timerInterval: null,
+			timerStartTimestamp: null,
 			elapsedSeconds: 0,
 			sessionsCompleted: 0,
 			focusMinutes: 25,
@@ -204,7 +212,9 @@ export default {
 				total: 0,
 				completed: false
 			},
-			testPanelVisible: false
+			testPanelVisible: false,
+			finishButtonPressing: false,
+			finishButtonPressTimer: null
 		};
 	},
 	computed: {
@@ -317,6 +327,9 @@ export default {
 	onShow() {
 		this.restoreSessions();
 		this.activeNav = 'tracking';
+		if (this.timerState === 'running' && !this.timerInterval) {
+			this.startTimer();
+		}
 	},
 	onHide() {
 		this.clearTimer();
@@ -399,6 +412,7 @@ export default {
 			this.currentModeKey = modeKey;
 			this.elapsedSeconds = 0;
 			this.timerState = 'idle';
+			this.timerStartTimestamp = null;
 			if (this.reportVisible && !preserveReport) {
 				this.reportVisible = false;
 			}
@@ -422,21 +436,19 @@ export default {
 			this.startTimer();
 		},
 		startTimer() {
-			if (this.timerRunning) {
-				return;
-			}
 			if (!this.currentDurationSeconds) {
 				uni.showToast({ title: '请先设置专注与休息时长', icon: 'none' });
 				return;
 			}
 			this.beginPlanIfNeeded();
+			if (!this.timerStartTimestamp) {
+				this.timerStartTimestamp = Date.now() - this.elapsedSeconds * 1000;
+			}
 			if (!this.timerInterval) {
 				this.timerInterval = setInterval(() => {
-					this.elapsedSeconds += 1;
-					if (this.currentDurationSeconds && this.elapsedSeconds >= this.currentDurationSeconds) {
-						this.handleTimerComplete({ reason: 'auto' });
-					}
+					this.updateElapsedFromClock();
 				}, 1000);
+				this.updateElapsedFromClock();
 			}
 			this.timerState = 'running';
 		},
@@ -446,11 +458,13 @@ export default {
 			}
 			this.clearTimer();
 			this.timerState = 'paused';
+			this.timerStartTimestamp = null;
 		},
 		resetTimer(silent = false) {
 			this.clearTimer();
 			this.elapsedSeconds = 0;
 			this.timerState = 'idle';
+			this.timerStartTimestamp = null;
 			if (this.reportVisible) {
 				this.reportVisible = false;
 			}
@@ -464,6 +478,7 @@ export default {
 			const spentSeconds = this.elapsedSeconds;
 			const prevMode = this.currentModeKey;
 			this.clearTimer();
+			this.timerStartTimestamp = null;
 			this.elapsedSeconds = 0;
 			this.timerState = 'idle';
 			if (prevMode === 'focus') {
@@ -492,10 +507,34 @@ export default {
 			if (!this.canFinishPlan) {
 				return;
 			}
+			this.resetFinishButtonState();
 			if (this.currentModeKey === 'focus' && this.elapsedSeconds > 0) {
 				this.planFocusSeconds += this.elapsedSeconds;
 			}
 			this.finalizePlan({ completed: false, reason: 'manual' });
+		},
+		onFinishButtonTouchStart() {
+			if (!this.canFinishPlan || this.finishButtonPressing) {
+				return;
+			}
+			this.finishButtonPressing = true;
+			if (this.finishButtonPressTimer) {
+				clearTimeout(this.finishButtonPressTimer);
+			}
+			this.finishButtonPressTimer = setTimeout(() => {
+				this.finishPlanEarly();
+				this.resetFinishButtonState();
+			}, 1000);
+		},
+		onFinishButtonTouchEnd() {
+			this.resetFinishButtonState();
+		},
+		resetFinishButtonState() {
+			if (this.finishButtonPressTimer) {
+				clearTimeout(this.finishButtonPressTimer);
+				this.finishButtonPressTimer = null;
+			}
+			this.finishButtonPressing = false;
 		},
 		onBottomNavTap(item) {
 			if (item.key === this.activeNav) {
@@ -513,6 +552,19 @@ export default {
 			if (this.timerInterval) {
 				clearInterval(this.timerInterval);
 				this.timerInterval = null;
+			}
+		},
+		updateElapsedFromClock() {
+			if (!this.timerStartTimestamp) {
+				this.timerStartTimestamp = Date.now() - this.elapsedSeconds * 1000;
+			}
+			const now = Date.now();
+			const elapsed = Math.max(0, Math.floor((now - this.timerStartTimestamp) / 1000));
+			if (elapsed !== this.elapsedSeconds) {
+				this.elapsedSeconds = elapsed;
+			}
+			if (this.currentDurationSeconds && this.elapsedSeconds >= this.currentDurationSeconds) {
+				this.handleTimerComplete({ reason: 'auto' });
 			}
 		},
 		onFocusDurationChange(event) {
@@ -586,6 +638,7 @@ export default {
 			this.clearTimer();
 			this.timerState = 'idle';
 			this.elapsedSeconds = 0;
+			this.timerStartTimestamp = null;
 			this.currentModeKey = 'focus';
 			const summarySeconds = this.planFocusSeconds;
 			const durationLabel = this.formatSecondsToLabel(summarySeconds);
@@ -868,6 +921,7 @@ export default {
 	background: rgba(255,255,255,0.1);
 	color: #ffffff;
 	font-size: 28rpx;
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .timer__button--primary {
@@ -884,6 +938,12 @@ export default {
 .timer__button[disabled] {
 	opacity: 0.5;
 }
+
+.timer__button--pressing {
+	transform: scale(1.09);
+	box-shadow: 0 14rpx 30rpx rgba(7, 11, 20, 0.45);
+}
+
 
 .timer__footer {
 	display: flex;
