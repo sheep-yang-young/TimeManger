@@ -33,7 +33,6 @@
 			<view class="efficiency glass" :class="{ 'glass--active': pageLoaded }">
 				<view class="card-header">
 					<text class="card-title">效率概览</text>
-					<text class="card-sub">用卡片快速掌握今日节奏</text>
 				</view>
 				<view class="stats-grid">
 					<view class="stat-card" v-for="card in statCards" :key="card.key" :class="`stat-card--${card.key}`">
@@ -70,7 +69,7 @@
 					</view>
 				</view>
 				<view v-if="!tasks.length" class="empty">
-					<text class="empty__tip">还没有任务，点击右下角添加吧</text>
+					<text class="empty__tip">还没有任务，点击右下角添加吧＞﹏＜</text>
 				</view>
 			</view>
 		</scroll-view>

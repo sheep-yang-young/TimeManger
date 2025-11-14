@@ -6,7 +6,7 @@
 			<view class="top-bar__left" @tap="goBackToToday">
 				<text class="top-bar__back">◀</text>
 			</view>
-			<view class="top-bar__center">
+			<view class="top-bar__center" @longpress="toggleTesterPanel">
 				<text class="top-bar__title">番茄钟</text>
 				<text class="top-bar__subtitle">保持专注的小助手</text>
 			</view>
@@ -17,25 +17,14 @@
 
 		<scroll-view class="main" scroll-y>
 			<view class="timer glass" :class="{ 'glass--active': pageLoaded }">
-				<view class="timer__modes">
-					<view
-						class="mode-chip"
-						v-for="mode in modeList"
-						:key="mode.key"
-						:class="{ 'mode-chip--active': currentModeKey === mode.key }"
-						@tap="switchMode(mode.key)"
-					>
-						<text class="mode-chip__label">{{ mode.label }}</text>
-						<text class="mode-chip__desc">{{ mode.desc }}</text>
-					</view>
-				</view>
 
 				<view class="timer__display">
 					<view class="timer__ring">
 						<view class="timer__ring-progress" :style="{ width: progressPercent, backgroundImage: currentMode.gradient }"></view>
 					</view>
 					<text class="timer__time">{{ formattedTime }}</text>
-					<text class="timer__hint">目标 {{ targetDurationLabel }} · {{ currentMode.label }}</text>
+					<text class="timer__hint">目标 {{ targetTomatoes }} 颗 · {{ planProgressLabel }} · {{ currentMode.label }}</text>
+					<text class="timer__state" :class="{ 'timer__state--break': currentModeKey === 'break' }">{{ currentStateLabel }}</text>
 				</view>
 
 				<view class="timer__controls">
@@ -47,8 +36,8 @@
 
 				<view class="timer__footer">
 					<text class="timer__status">{{ statusText }}</text>
-					<button class="timer__button timer__button--ghost" @tap="completeAndNext" :disabled="timerState === 'idle' && elapsedSeconds === 0">
-						结束本轮
+					<button class="timer__button timer__button--ghost" @tap="finishPlanEarly" :disabled="!canFinishPlan">
+						结束计划
 					</button>
 				</view>
 			</view>
@@ -71,6 +60,7 @@
 						:value="focusMinutes"
 						activeColor="#6ecbff"
 						backgroundColor="rgba(255,255,255,0.12)"
+						:disabled="settingsLocked"
 						@change="onFocusDurationChange"
 					></slider>
 				</view>
@@ -87,23 +77,25 @@
 						:value="breakMinutes"
 						activeColor="#ff9f1f"
 						backgroundColor="rgba(255,255,255,0.12)"
+						:disabled="settingsLocked"
 						@change="onBreakDurationChange"
 					></slider>
 				</view>
 				<view class="settings__field">
 					<view class="settings__label-row">
-						<text class="settings__label">番茄奖励</text>
-						<text class="settings__value">{{ tomatoPerSession }} 颗/轮</text>
+						<text class="settings__label">番茄目标</text>
+						<text class="settings__value">{{ targetTomatoes }} 颗</text>
 					</view>
 					<slider
 						class="settings__slider"
 						min="1"
-						max="5"
+						max="12"
 						step="1"
-						:value="tomatoPerSession"
+						:value="targetTomatoes"
 						activeColor="#74f7ca"
 						backgroundColor="rgba(255,255,255,0.12)"
-						@change="onTomatoRewardChange"
+						:disabled="settingsLocked"
+						@change="onTargetTomatoesChange"
 					></slider>
 				</view>
 			</view>
@@ -135,6 +127,19 @@
 			</view>
 		</view>
 
+		<view v-if="testPanelVisible" class="tester-panel glass glass--active" @tap.stop>
+			<view class="tester-panel__header">
+				<text class="tester-panel__title">调试工具</text>
+				<text class="tester-panel__close" @tap="hideTesterPanel">✕</text>
+			</view>
+			<view class="tester-panel__actions">
+				<button class="tester-panel__action" @tap="triggerTesterAction('mock-focus')">模拟完成一颗</button>
+				<button class="tester-panel__action" @tap="triggerTesterAction('mock-break')">模拟进入休息阶段</button>
+				<button class="tester-panel__action" @tap="triggerTesterAction('finish-plan')">直接完成计划</button>
+				<button class="tester-panel__action" @tap="triggerTesterAction('reset-data')">清空今日数据</button>
+			</view>
+		</view>
+
 		<view class="report-mask" v-if="reportVisible" @tap="closeReport">
 			<view class="report glass glass--active" @tap.stop>
 				<view class="report__header">
@@ -147,11 +152,11 @@
 						<text class="report__stat-value">{{ reportData.duration }}</text>
 					</view>
 					<view class="report__stat">
-						<text class="report__stat-label">获得番茄</text>
-						<text class="report__stat-value">+{{ reportData.reward }}</text>
+						<text class="report__stat-label">获番茄</text>
+						<text class="report__stat-value">{{ reportData.gained }} / {{ reportData.target }}</text>
 					</view>
 					<view class="report__stat">
-						<text class="report__stat-label">累计番茄</text>
+						<text class="report__stat-label">总番茄</text>
 						<text class="report__stat-value">{{ reportData.total }}</text>
 					</view>
 				</view>
@@ -176,8 +181,10 @@ export default {
 			sessionsCompleted: 0,
 			focusMinutes: 25,
 			breakMinutes: 5,
-			tomatoPerSession: 1,
-			lastFocusSummary: null,
+			targetTomatoes: 4,
+			planActive: false,
+			planEarnedTomatoes: 0,
+			planFocusSeconds: 0,
 			bottomNavItems: [
 				{ key: 'today', label: '今日', icon: '◎', target: '/pages/index/index' },
 				{ key: 'tracking', label: '番茄钟', icon: '◴', target: '/pages/pomodoro/index' },
@@ -192,9 +199,12 @@ export default {
 			reportVisible: false,
 			reportData: {
 				duration: '00:00:00',
-				reward: 0,
-				total: 0
-			}
+				gained: 0,
+				target: 0,
+				total: 0,
+				completed: false
+			},
+			testPanelVisible: false
 		};
 	},
 	computed: {
@@ -210,7 +220,7 @@ export default {
 					key: 'break',
 					label: `休息 ${this.breakMinutes}′`,
 					desc: '短暂放松，补充能量',
-					gradient: 'linear-gradient(135deg, #ff9f1f 0%, #ff6a5f 100%)'
+					gradient: 'linear-gradient(135deg, #ffe066 0%, #ffba42 100%)'
 				}
 			];
 		},
@@ -263,8 +273,37 @@ export default {
 			}
 			return '准备开始休息时间';
 		},
-		targetDurationLabel() {
-			return this.currentModeKey === 'focus' ? `${this.focusMinutes} 分钟` : `${this.breakMinutes} 分钟`;
+		currentStateLabel() {
+			if (this.currentModeKey === 'focus') {
+				if (this.timerState === 'running') {
+					return '当前状态：专注进行中';
+				}
+				if (this.timerState === 'paused') {
+					return '当前状态：专注已暂停';
+				}
+				return '当前状态：准备开始专注';
+			}
+			if (this.timerState === 'running') {
+				return '当前状态：休息恢复中';
+			}
+			if (this.timerState === 'paused') {
+				return '当前状态：休息已暂停';
+			}
+			return '当前状态：准备开始休息';
+		},
+		planProgressLabel() {
+			const target = Math.max(1, this.targetTomatoes || 1);
+			const completed = Math.min(this.planEarnedTomatoes, target);
+			return `已完成 ${completed}/${target} 颗`;
+		},
+		settingsLocked() {
+			return this.planActive || this.timerState !== 'idle';
+		},
+		canFinishPlan() {
+			if (this.planActive) {
+				return true;
+			}
+			return this.planEarnedTomatoes > 0 || this.elapsedSeconds > 0;
 		}
 	},
 	onLoad() {
@@ -291,6 +330,65 @@ export default {
 				return;
 			}
 			uni.switchTab({ url: '/pages/index/index' });
+		},
+		toggleTesterPanel() {
+			this.testPanelVisible = !this.testPanelVisible;
+			if (this.testPanelVisible) {
+				uni.showToast({ title: '测试面板已开启', icon: 'none' });
+			}
+		},
+		hideTesterPanel() {
+			if (!this.testPanelVisible) {
+				return;
+			}
+			this.testPanelVisible = false;
+		},
+		triggerTesterAction(action) {
+			switch (action) {
+				case 'mock-focus': {
+					this.beginPlanIfNeeded();
+					const focusSeconds = Math.max(60, this.focusMinutes * 60);
+					this.planFocusSeconds += focusSeconds;
+					this.planEarnedTomatoes += 1;
+					this.sessionsCompleted += 1;
+					this.saveSessions();
+					uni.showToast({ title: '模拟完成 1 颗', icon: 'none' });
+					break;
+				}
+				case 'mock-break': {
+					this.beginPlanIfNeeded();
+					if (this.reportVisible) {
+						this.reportVisible = false;
+					}
+					this.switchMode('break', { silent: true, autoStart: true, force: true, preserveReport: true });
+					uni.showToast({ title: '已进入休息阶段', icon: 'none' });
+					break;
+				}
+				case 'finish-plan': {
+					this.beginPlanIfNeeded();
+					const target = Math.max(1, this.targetTomatoes);
+					this.planEarnedTomatoes = target;
+					this.planFocusSeconds = target * Math.max(60, this.focusMinutes * 60);
+					this.finalizePlan({ completed: true });
+					break;
+				}
+				case 'reset-data': {
+					this.resetTimer(true);
+					this.resetPlanState();
+					this.sessionsCompleted = 0;
+					try {
+						uni.removeStorageSync(STORAGE_COUNT_KEY);
+					} catch (err) {
+						console.warn('清除番茄统计失败', err);
+					}
+					this.saveSessions();
+					this.hideTesterPanel();
+					uni.showToast({ title: '今日数据已清空', icon: 'none' });
+					break;
+				}
+				default:
+					uni.showToast({ title: '未知操作', icon: 'none' });
+			}
 		},
 		switchMode(modeKey, options = {}) {
 			const { silent = false, autoStart = false, force = false, preserveReport = false } = options;
@@ -320,6 +418,7 @@ export default {
 			if (this.reportVisible) {
 				this.reportVisible = false;
 			}
+			this.beginPlanIfNeeded();
 			this.startTimer();
 		},
 		startTimer() {
@@ -330,6 +429,7 @@ export default {
 				uni.showToast({ title: '请先设置专注与休息时长', icon: 'none' });
 				return;
 			}
+			this.beginPlanIfNeeded();
 			if (!this.timerInterval) {
 				this.timerInterval = setInterval(() => {
 					this.elapsedSeconds += 1;
@@ -354,58 +454,48 @@ export default {
 			if (this.reportVisible) {
 				this.reportVisible = false;
 			}
+			this.resetPlanState();
 			if (!silent) {
 				uni.showToast({ title: '已重置计时', icon: 'none' });
 			}
 		},
 		handleTimerComplete(options = {}) {
-			const { reason = 'auto', skipNext = false } = options;
+			const { reason = 'auto' } = options;
 			const spentSeconds = this.elapsedSeconds;
 			const prevMode = this.currentModeKey;
 			this.clearTimer();
 			this.elapsedSeconds = 0;
 			this.timerState = 'idle';
 			if (prevMode === 'focus') {
-				const reward = Math.max(1, Math.round(this.tomatoPerSession));
 				const focusDurationSeconds = spentSeconds > 0 ? spentSeconds : this.currentDurationSeconds;
-				this.lastFocusSummary = {
-					duration: focusDurationSeconds,
-					reward
-				};
-				this.sessionsCompleted += reward;
+				this.planFocusSeconds += focusDurationSeconds;
+				this.planEarnedTomatoes += 1;
+				this.sessionsCompleted += 1;
 				this.saveSessions();
-				if (reason === 'manual') {
-					this.showFocusReport(focusDurationSeconds, reward);
-				} else if (this.reportVisible) {
-					this.reportVisible = false;
+				const planFinished = this.planEarnedTomatoes >= this.targetTomatoes;
+				if (planFinished) {
+					this.finalizePlan({ completed: true, reason });
+					return;
 				}
-				if (!skipNext) {
-					uni.showToast({ title: '完成专注，开始休息', icon: 'none' });
-					this.switchMode('break', { silent: true, autoStart: true, force: true });
-				} else {
-					uni.showToast({ title: '本轮番茄已结束', icon: 'none' });
-					const preserveReport = reason === 'manual' && this.reportVisible;
-					this.switchMode('focus', { silent: true, force: true, preserveReport });
-				}
-			} else {
-				if (reason === 'manual' && this.lastFocusSummary) {
-					const { duration, reward } = this.lastFocusSummary;
-					this.showFocusReport(duration, reward);
-				}
-				if (!skipNext) {
-					uni.showToast({ title: '休息完成，继续加油', icon: 'none' });
-					this.switchMode('focus', { silent: true, autoStart: true, force: true });
-				} else {
-					const preserveReport = reason === 'manual' && this.reportVisible;
-					this.switchMode('focus', { silent: true, force: true, preserveReport });
-				}
-			}
-		},
-		completeAndNext() {
-			if (this.timerState === 'idle' && this.elapsedSeconds === 0) {
+				uni.showToast({ title: '完成专注，开始休息', icon: 'none' });
+				this.switchMode('break', { silent: true, autoStart: true, force: true });
 				return;
 			}
-			this.handleTimerComplete({ reason: 'manual', skipNext: true });
+			if (!this.planActive) {
+				this.switchMode('focus', { silent: true, force: true });
+				return;
+			}
+			uni.showToast({ title: '休息完成，继续加油', icon: 'none' });
+			this.switchMode('focus', { silent: true, autoStart: true, force: true });
+		},
+		finishPlanEarly() {
+			if (!this.canFinishPlan) {
+				return;
+			}
+			if (this.currentModeKey === 'focus' && this.elapsedSeconds > 0) {
+				this.planFocusSeconds += this.elapsedSeconds;
+			}
+			this.finalizePlan({ completed: false, reason: 'manual' });
 		},
 		onBottomNavTap(item) {
 			if (item.key === this.activeNav) {
@@ -426,6 +516,9 @@ export default {
 			}
 		},
 		onFocusDurationChange(event) {
+			if (!this.ensureSettingsEditable()) {
+				return;
+			}
 			const value = Number(event.detail.value) || this.focusMinutes;
 			const minutes = Math.max(1, Math.min(180, value));
 			if (minutes === this.focusMinutes) {
@@ -438,6 +531,9 @@ export default {
 			}
 		},
 		onBreakDurationChange(event) {
+			if (!this.ensureSettingsEditable()) {
+				return;
+			}
 			const value = Number(event.detail.value) || this.breakMinutes;
 			const minutes = Math.max(1, Math.min(60, value));
 			if (minutes === this.breakMinutes) {
@@ -449,20 +545,65 @@ export default {
 				this.resetTimer(true);
 			}
 		},
-		onTomatoRewardChange(event) {
-			const value = Number(event.detail.value) || this.tomatoPerSession;
-			const reward = Math.max(1, Math.min(5, Math.round(value)));
-			if (reward === this.tomatoPerSession) {
+		onTargetTomatoesChange(event) {
+			if (!this.ensureSettingsEditable()) {
 				return;
 			}
-			this.tomatoPerSession = reward;
+			const value = Number(event.detail.value) || this.targetTomatoes;
+			const target = Math.max(1, Math.min(20, Math.round(value)));
+			if (target === this.targetTomatoes) {
+				return;
+			}
+			this.targetTomatoes = target;
 			this.persistSettings();
+			if (this.planActive || this.planEarnedTomatoes > 0 || this.elapsedSeconds > 0) {
+				this.resetTimer(true);
+				uni.showToast({ title: '目标已更新，重新开始', icon: 'none' });
+			}
+		},
+		beginPlanIfNeeded() {
+			if (this.planActive) {
+				return;
+			}
+			this.planActive = true;
+			this.planEarnedTomatoes = 0;
+			this.planFocusSeconds = 0;
+		},
+		resetPlanState() {
+			this.planActive = false;
+			this.planEarnedTomatoes = 0;
+			this.planFocusSeconds = 0;
+		},
+		ensureSettingsEditable() {
+			if (!this.settingsLocked) {
+				return true;
+			}
+			uni.showToast({ title: '进行中的番茄不可修改节奏', icon: 'none' });
+			return false;
+		},
+		finalizePlan({ completed }) {
+			this.hideTesterPanel();
+			this.clearTimer();
+			this.timerState = 'idle';
+			this.elapsedSeconds = 0;
+			this.currentModeKey = 'focus';
+			const summarySeconds = this.planFocusSeconds;
+			const durationLabel = this.formatSecondsToLabel(summarySeconds);
+			this.reportData = {
+				duration: durationLabel,
+				gained: this.planEarnedTomatoes,
+				target: this.targetTomatoes,
+				total: this.sessionsCompleted,
+				completed
+			};
+			this.reportVisible = true;
+			this.resetPlanState();
 		},
 		persistSettings() {
 			const payload = {
 				focusMinutes: this.focusMinutes,
 				breakMinutes: this.breakMinutes,
-				tomatoPerSession: this.tomatoPerSession
+				targetTomatoes: this.targetTomatoes
 			};
 			try {
 				uni.setStorageSync(STORAGE_SETTINGS_KEY, payload);
@@ -480,8 +621,8 @@ export default {
 					if (stored.breakMinutes) {
 						this.breakMinutes = Number(stored.breakMinutes) || this.breakMinutes;
 					}
-					if (stored.tomatoPerSession) {
-						this.tomatoPerSession = Number(stored.tomatoPerSession) || this.tomatoPerSession;
+					if (stored.targetTomatoes) {
+						this.targetTomatoes = Number(stored.targetTomatoes) || this.targetTomatoes;
 					}
 				}
 			} catch (err) {
@@ -535,6 +676,7 @@ export default {
 		},
 		closeReport() {
 			this.reportVisible = false;
+			this.hideTesterPanel();
 		},
 		formatSecondsToLabel(seconds) {
 			const safeSeconds = Math.max(0, Math.round(seconds || 0));
@@ -606,21 +748,28 @@ export default {
 }
 
 .top-bar__left {
-	width: 100rpx;
+	width: 120rpx;
 	display: flex;
 	align-items: center;
 	justify-content: flex-start;
 }
 
 .top-bar__center {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%, -50%);
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	gap: 10rpx;
+	text-align: center;
+	width: 320rpx;
+	pointer-events: auto;
 }
 
 .top-bar__right {
-	width: 220rpx;
+	min-width: 200rpx;
 	display: flex;
 	justify-content: flex-end;
 	font-size: 22rpx;
@@ -658,40 +807,6 @@ export default {
 	gap: 34rpx;
 }
 
-.timer__modes {
-	display: flex;
-	gap: 20rpx;
-	flex-wrap: nowrap;
-	overflow-x: auto;
-	padding-bottom: 6rpx;
-}
-
-.mode-chip {
-	min-width: 220rpx;
-	padding: 26rpx 24rpx;
-	border-radius: 24rpx;
-	background: rgba(255,255,255,0.06);
-	border: 1rpx solid rgba(255,255,255,0.12);
-	display: flex;
-	flex-direction: column;
-	gap: 14rpx;
-}
-
-.mode-chip--active {
-	background: rgba(110,203,255,0.15);
-	border-color: rgba(110,203,255,0.45);
-}
-
-.mode-chip__label {
-	font-size: 28rpx;
-	font-weight: 600;
-}
-
-.mode-chip__desc {
-	font-size: 22rpx;
-	color: rgba(255,255,255,0.65);
-}
-
 .timer__display {
 	display: flex;
 	flex-direction: column;
@@ -726,6 +841,16 @@ export default {
 .timer__hint {
 	font-size: 26rpx;
 	color: rgba(255,255,255,0.65);
+}
+
+.timer__state {
+	font-size: 26rpx;
+	color: rgba(255,255,255,0.8);
+	letter-spacing: 1rpx;
+}
+
+.timer__state--break {
+	color: #ffdf68;
 }
 
 .timer__controls {
@@ -818,6 +943,7 @@ export default {
 	margin: 0;
 }
 
+
 .insights {
 	padding: 40rpx 36rpx;
 	margin-bottom: 40rpx;
@@ -909,19 +1035,18 @@ export default {
 	background: rgba(10,17,28,0.55);
 	backdrop-filter: blur(6rpx);
 	z-index: 20;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	padding: 0 40rpx;
+	display: grid;
+	place-items: center;
+	padding: 40rpx;
+	box-sizing: border-box;
 }
 
 .report {
-	width: 100%;
-	max-width: 660rpx;
+	width: min(660rpx, calc(100% - 80rpx));
 	padding: 48rpx 40rpx 56rpx;
 	border-radius: 36rpx;
 	box-sizing: border-box;
-	max-height: 80%;
+	max-height: calc(100% - 80rpx);
 	display: flex;
 	flex-direction: column;
 	gap: 32rpx;
@@ -980,5 +1105,56 @@ export default {
 	font-size: 32rpx;
 	font-weight: 600;
 	border: none;
+}
+
+.tester-panel {
+	position: fixed;
+	right: 40rpx;
+	top: 200rpx;
+	width: 320rpx;
+	padding: 28rpx 24rpx 32rpx;
+	display: flex;
+	flex-direction: column;
+	gap: 24rpx;
+	z-index: 11;
+}
+
+.tester-panel__header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.tester-panel__title {
+	font-size: 26rpx;
+	font-weight: 600;
+}
+
+.tester-panel__close {
+	font-size: 28rpx;
+	color: rgba(255,255,255,0.7);
+	padding: 6rpx 10rpx;
+}
+
+.tester-panel__actions {
+	display: flex;
+	flex-direction: column;
+	gap: 18rpx;
+}
+
+.tester-panel__action {
+	width: 100%;
+	height: 72rpx;
+	line-height: 72rpx;
+	border-radius: 20rpx;
+	background: rgba(255,255,255,0.14);
+	color: #ffffff;
+	font-size: 26rpx;
+	border: 1rpx solid rgba(255,255,255,0.16);
+}
+
+.tester-panel__action:active {
+	background: rgba(110,203,255,0.35);
+	color: #0f1421;
 }
 </style>
