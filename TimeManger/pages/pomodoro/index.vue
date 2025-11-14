@@ -167,7 +167,7 @@
 						<text class="report__stat-value">{{ reportData.total }}</text>
 					</view>
 				</view>
-				<button class="report__action" @tap="closeReport">继续下一轮</button>
+				<button class="report__action" @tap="closeReport">结束专注</button>
 			</view>
 		</view>
 	</view>
