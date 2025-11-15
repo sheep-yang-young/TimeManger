@@ -21,7 +21,7 @@
 				<text class="side-menu__title">更多功能</text>
 			</view>
 			<view class="side-menu__list">
-				<view class="side-menu__item" v-for="item in sideMenuItems" :key="item.label">
+				<view class="side-menu__item" v-for="item in sideMenuItems" :key="item.label" @tap="onSideMenuItemTap(item)">
 					<text class="side-menu__item-label">{{ item.label }}</text>
 					<text class="side-menu__item-tip">{{ item.tip }}</text>
 				</view>
@@ -215,6 +215,7 @@ export default {
 			time: ''
 		},
 			sideMenuItems: [
+				{ label: '日历', tip: '查看历史事项', action: 'calendar' },
 				{ label: '效率洞察', tip: '查看长期趋势' },
 				{ label: '任务模板', tip: '复用高频计划' },
 				{ label: '专注计时', tip: '开启番茄钟' },
@@ -416,6 +417,14 @@ onPageScroll(e) {
 		},
 		toggleSideMenu() {
 			this.showSideMenu = !this.showSideMenu;
+		},
+		onSideMenuItemTap(item) {
+			if (item.action === 'calendar') {
+				uni.navigateTo({
+					url: '/pages/calendar/index'
+				});
+				this.showSideMenu = false;
+			}
 		},
 		toggleAddSheet() {
 			this.showAddSheet = !this.showAddSheet;
@@ -642,6 +651,21 @@ onPageScroll(e) {
 		try {
 			uni.setStorageSync('todayTasks', this.tasks);
 			uni.setStorageSync('todayStats', this.dailyStats);
+			
+			// Save tasks to history by date
+			const today = new Date();
+			const dateKey = this.buildTodayKey();
+			let taskHistory = {};
+			try {
+				const stored = uni.getStorageSync('taskHistory');
+				if (stored && typeof stored === 'object') {
+					taskHistory = stored;
+				}
+			} catch (err) {
+				console.warn('读取任务历史失败', err);
+			}
+			taskHistory[dateKey] = this.tasks;
+			uni.setStorageSync('taskHistory', taskHistory);
 		} catch (err) {
 			console.error('保存数据失败:', err);
 		}
