@@ -121,6 +121,16 @@
 			</view>
 		</scroll-view>
 
+		<!-- 页面底部装饰 -->
+		<view class="page-footer">
+			<text class="page-footer__text">专注当下，成就未来</text>
+			<view class="page-footer__dots">
+				<view class="dot"></view>
+				<view class="dot"></view>
+				<view class="dot"></view>
+			</view>
+		</view>
+
 		<view class="bottom-bar glass" :class="{ 'glass--active': pageLoaded }">
 			<view
 				class="bottom-bar__item"
@@ -193,11 +203,11 @@ export default {
 			planActive: false,
 			planEarnedTomatoes: 0,
 			planFocusSeconds: 0,
-			bottomNavItems: [
-				{ key: 'today', label: '今日', icon: '◎', target: '/pages/index/index' },
-				{ key: 'tracking', label: '番茄钟', icon: '◴', target: '/pages/pomodoro/index' },
-				{ key: 'mine', label: '我的', icon: '△', target: '' }
-			],
+		bottomNavItems: [
+			{ key: 'today', label: '今日', icon: '◎', target: '/pages/index/index' },
+			{ key: 'tracking', label: '番茄钟', icon: '◴', target: '/pages/pomodoro/index' },
+			{ key: 'habit', label: '习惯', icon: '△', target: '/pages/habit/index' }
+		],
 			activeNav: 'tracking',
 			tips: [
 				{ title: '规划你的番茄', desc: '开始之前先列出 3 个最想完成的任务，明确优先级。' },
@@ -601,18 +611,14 @@ export default {
 			}
 			// #endif
 		},
-		onBottomNavTap(item) {
-			if (item.key === this.activeNav) {
-				return;
-			}
-			if (item.key === 'mine') {
-				uni.showToast({ title: '敬请期待', icon: 'none' });
-				return;
-			}
-			if (item.target) {
-				uni.switchTab({ url: item.target });
-			}
-		},
+	onBottomNavTap(item) {
+		if (item.key === this.activeNav) {
+			return;
+		}
+		if (item.target) {
+			uni.switchTab({ url: item.target });
+		}
+	},
 		clearTimer() {
 			if (this.timerInterval) {
 				clearInterval(this.timerInterval);
@@ -857,7 +863,7 @@ export default {
 
 .top-bar {
 	position: relative;
-	margin: 60rpx 40rpx 28rpx;
+	margin: 60rpx 40rpx 24rpx;
 	height: 140rpx;
 	display: flex;
 	align-items: center;
@@ -912,10 +918,11 @@ export default {
 
 .main {
 	position: relative;
-	padding: 0 40rpx 220rpx;
+	padding: 0 40rpx;
+	padding-bottom: calc(240rpx + env(safe-area-inset-bottom));
 	box-sizing: border-box;
 	z-index: 2;
-	padding-bottom: calc(240rpx + env(safe-area-inset-bottom));
+	padding-bottom: calc(260rpx + env(safe-area-inset-bottom));
 }
 
 .timer {
@@ -1114,6 +1121,55 @@ export default {
 .tip__desc {
 	font-size: 24rpx;
 	color: rgba(255,255,255,0.62);
+}
+
+/* 页面底部装饰 */
+.page-footer {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 12rpx;
+	padding: 30rpx 0 20rpx;
+	opacity: 0.5;
+}
+
+.page-footer__text {
+	font-size: 24rpx;
+	color: rgba(255,255,255,0.6);
+	letter-spacing: 2rpx;
+	text-align: center;
+}
+
+.page-footer__dots {
+	display: flex;
+	gap: 12rpx;
+}
+
+.page-footer__dots .dot {
+	width: 8rpx;
+	height: 8rpx;
+	border-radius: 50%;
+	background: rgba(255,255,255,0.3);
+	animation: dot-fade 2s infinite;
+}
+
+.page-footer__dots .dot:nth-child(2) {
+	animation-delay: 0.3s;
+}
+
+.page-footer__dots .dot:nth-child(3) {
+	animation-delay: 0.6s;
+}
+
+@keyframes dot-fade {
+	0%, 100% {
+		opacity: 0.3;
+		transform: scale(1);
+	}
+	50% {
+		opacity: 1;
+		transform: scale(1.2);
+	}
 }
 
 .bottom-bar {

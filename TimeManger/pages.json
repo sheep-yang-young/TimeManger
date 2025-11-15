@@ -15,6 +15,14 @@
 				"navigationStyle": "custom",
 				"enablePullDownRefresh": false
 			}
+		},
+		{
+			"path": "pages/habit/index",
+			"style": {
+				"navigationBarTitleText": "习惯",
+				"navigationStyle": "custom",
+				"enablePullDownRefresh": false
+			}
 		}
 	],
 	"globalStyle": {
@@ -41,12 +49,12 @@
 				"iconPath": "static/tabbar/stats.png",
 				"selectedIconPath": "static/tabbar/stats-active.png"
 			},
-			{
-				"pagePath": "pages/index/index",
-				"text": "我的",
-				"iconPath": "static/tabbar/user.png",
-				"selectedIconPath": "static/tabbar/user-active.png"
-			}
+		{
+			"pagePath": "pages/habit/index",
+			"text": "习惯",
+			"iconPath": "static/tabbar/user.png",
+			"selectedIconPath": "static/tabbar/user-active.png"
+		}
 		]
 	},
 	"uniIdRouter": {}

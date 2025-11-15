@@ -29,8 +29,8 @@
 		</view>
 		<view class="side-menu__mask" v-if="showSideMenu" @tap="toggleSideMenu"></view>
 
-		<scroll-view class="main" scroll-y>
-			<view class="efficiency glass" :class="{ 'glass--active': pageLoaded }">
+		<view class="main">
+		<view class="efficiency glass" :class="{ 'glass--active': pageLoaded }">
 				<view class="card-header">
 					<text class="card-title">效率概览</text>
 				</view>
@@ -68,13 +68,23 @@
 						<text class="task__action-btn task__action-btn--delete" @tap.stop="deleteTask(task)">×</text>
 					</view>
 				</view>
-				<view v-if="!tasks.length" class="empty">
-					<text class="empty__tip">还没有任务，点击右下角添加吧＞﹏＜</text>
-				</view>
+			<view v-if="!tasks.length" class="empty">
+				<text class="empty__tip">还没有任务，点击右下角添加吧＞﹏＜</text>
 			</view>
-		</scroll-view>
+		</view>
+		
+		<!-- 页面底部装饰 -->
+		<view class="page-footer">
+			<text class="page-footer__text">今日事，今日毕</text>
+			<view class="page-footer__dots">
+				<view class="dot"></view>
+				<view class="dot"></view>
+				<view class="dot"></view>
+			</view>
+		</view>
+	</view>
 
-		<view class="bottom-bar glass" :class="{ 'glass--active': pageLoaded }">
+	<view class="bottom-bar glass" :class="{ 'glass--active': pageLoaded }">
 			<view
 				class="bottom-bar__item"
 				v-for="item in bottomNavItems"
@@ -87,68 +97,88 @@
 			</view>
 		</view>
 
-		<view class="fab" :class="{ 'fab--pulse': showAddSheet }" @tap.stop="toggleAddSheet">
+		<view class="fab" :class="{ 'fab--pulse': showAddSheet, 'fab--hidden': hideFab }" @tap.stop="toggleAddSheet">
 			<text class="fab__icon">+</text>
 		</view>
 
-		<view class="sheet-mask" v-if="showAddSheet" @tap="closeAddSheet"></view>
-		<view class="sheet glass" :class="{ 'sheet--open': showAddSheet }" @touchmove.stop.prevent>
-			<view class="sheet__handle"></view>
+	<view class="sheet-mask" v-if="showAddSheet" @tap="closeAddSheet"></view>
+	<view class="sheet glass" :class="{ 'sheet--open': showAddSheet }" @touchmove.stop.prevent>
+		<view class="sheet__handle"></view>
+		<view class="sheet__header">
 			<text class="sheet__title">添加今日任务</text>
-			<view class="form-field">
-				<text class="form-label">任务名称</text>
-				<input class="form-input" placeholder="输入任务标题" v-model="form.title" />
+			<view class="sheet__close" @tap.stop="closeAddSheet">
+				<text class="sheet__close-icon">✕</text>
 			</view>
-			<view class="form-field form-field--select" @tap="openDeadlinePicker">
-				<text class="form-label">截止时间</text>
-				<view class="form-value">
-					<text>{{ form.deadline || '请选择截止时间' }}</text>
-					<text class="form-arrow">></text>
-				</view>
-			</view>
-			<view class="form-field">
-				<text class="form-label">番茄数量</text>
-				<slider class="form-slider" min="1" max="12" step="1" :value="form.tomatoes" activeColor="#6ecbff" backgroundColor="rgba(255,255,255,0.15)" @change="onTomatoChange"></slider>
-				<text class="slider-value">{{ form.tomatoes }} 个</text>
-			</view>
-			<button class="sheet__action" type="primary" :disabled="!canSubmit" @tap.stop="confirmTask">添加任务</button>
 		</view>
-
-		<view class="sheet-mask" v-if="showEditSheet" @tap="closeEditSheet"></view>
-		<view class="sheet glass" :class="{ 'sheet--open': showEditSheet }" @touchmove.stop.prevent>
-			<view class="sheet__handle"></view>
-			<text class="sheet__title">编辑任务</text>
-			<view class="form-field">
-				<text class="form-label">任务名称</text>
-				<input class="form-input" placeholder="输入任务标题" v-model="form.title" />
-			</view>
-			<view class="form-field form-field--select" @tap="openDeadlinePicker">
-				<text class="form-label">截止时间</text>
-				<view class="form-value">
-					<text>{{ form.deadline || '请选择截止时间' }}</text>
-					<text class="form-arrow">></text>
-				</view>
-			</view>
-			<button class="sheet__action" type="primary" :disabled="!canSubmit" @tap.stop="confirmEditTask">保存修改</button>
+		<view class="form-field">
+			<text class="form-label">任务名称</text>
+			<input class="form-input" placeholder="输入任务标题" v-model="form.title" />
 		</view>
-
-		<view class="deadline" :class="{ 'deadline--open': showDeadlinePicker }" @touchmove.stop.prevent>
-			<view class="deadline__header">
-				<text class="deadline__title">选择截止时间</text>
-				<text class="deadline__close" @tap.stop="closeDeadlinePicker">完成</text>
-			</view>
-			<scroll-view class="deadline__body" scroll-y>
-				<view class="deadline-group" v-for="group in deadlineOptions" :key="group.label">
-					<text class="deadline-group__label">{{ group.label }}</text>
-					<view class="deadline-group__items">
-						<view class="deadline-option" v-for="option in group.items" :key="option.value" :class="{ 'deadline-option--active': form.deadline === option.value }" @tap.stop="selectDeadline(option)">
-							<text class="deadline-option__text">{{ option.value }}</text>
-							<text class="deadline-option__sub">{{ option.tip }}</text>
-						</view>
+		<view class="form-field">
+			<text class="form-label">截止时间</text>
+			<view class="deadline-options">
+				<view class="deadline-option-item" :class="{ 'deadline-option-item--active': form.deadline === '' }" @tap="selectNoDeadline">
+					<text class="deadline-option-item__text">不指定时间</text>
+				</view>
+				<picker mode="date" :value="form.date" :start="minDate" @change="onDateChange">
+					<view class="form-value form-value--picker">
+						<text>{{ form.date || '选择日期' }}</text>
+						<text class="form-arrow">></text>
 					</view>
-				</view>
-			</scroll-view>
+				</picker>
+				<picker mode="time" :value="form.time" @change="onTimeChange">
+					<view class="form-value form-value--picker">
+						<text>{{ form.time || '选择时间' }}</text>
+						<text class="form-arrow">></text>
+					</view>
+				</picker>
+			</view>
+			<view v-if="form.deadline" class="form-deadline-display">
+				<text class="form-deadline-display__text">截止时间：{{ form.deadline }}</text>
+			</view>
 		</view>
+		<button class="sheet__action" type="primary" :disabled="!canSubmit" @tap.stop="confirmTask">添加任务</button>
+		</view>
+
+	<view class="sheet-mask" v-if="showEditSheet" @tap="closeEditSheet"></view>
+	<view class="sheet glass" :class="{ 'sheet--open': showEditSheet }" @touchmove.stop.prevent>
+		<view class="sheet__handle"></view>
+		<view class="sheet__header">
+			<text class="sheet__title">编辑任务</text>
+			<view class="sheet__close" @tap.stop="closeEditSheet">
+				<text class="sheet__close-icon">✕</text>
+			</view>
+		</view>
+		<view class="form-field">
+			<text class="form-label">任务名称</text>
+			<input class="form-input" placeholder="输入任务标题" v-model="form.title" />
+		</view>
+		<view class="form-field">
+			<text class="form-label">截止时间</text>
+			<view class="deadline-options">
+				<view class="deadline-option-item" :class="{ 'deadline-option-item--active': form.deadline === '' }" @tap="selectNoDeadline">
+					<text class="deadline-option-item__text">不指定时间</text>
+				</view>
+				<picker mode="date" :value="form.date" :start="minDate" @change="onDateChange">
+					<view class="form-value form-value--picker">
+						<text>{{ form.date || '选择日期' }}</text>
+						<text class="form-arrow">></text>
+					</view>
+				</picker>
+				<picker mode="time" :value="form.time" @change="onTimeChange">
+					<view class="form-value form-value--picker">
+						<text>{{ form.time || '选择时间' }}</text>
+						<text class="form-arrow">></text>
+					</view>
+				</picker>
+			</view>
+			<view v-if="form.deadline" class="form-deadline-display">
+				<text class="form-deadline-display__text">截止时间：{{ form.deadline }}</text>
+			</view>
+		</view>
+		<button class="sheet__action" type="primary" :disabled="!canSubmit" @tap.stop="confirmEditTask">保存修改</button>
+		</view>
+
 	</view>
 </template>
 
@@ -158,10 +188,13 @@ export default {
 		return {
 			pageLoaded: false,
 			showSideMenu: false,
-			showAddSheet: false,
-			showEditSheet: false,
-			showDeadlinePicker: false,
-			editingTask: null,
+		showAddSheet: false,
+		showEditSheet: false,
+		editingTask: null,
+			hideFab: false,
+			hideBottomBar: false,
+			scrollTop: 0,
+			lastScrollTop: 0,
 			dailyStats: {
 				completed: 5,
 				active: 9,
@@ -175,39 +208,23 @@ export default {
 				{ id: 2, title: '晚间冥想 20 分钟', deadline: '今天 21:00', done: true, expired: false },
 				{ id: 3, title: '复盘项目进度', deadline: '明天 09:00', done: false, expired: false }
 			],
-			form: {
-				title: '',
-				deadline: '',
-				tomatoes: 3
-			},
-			deadlineOptions: [
-				{ label: '今天', items: [
-					{ value: '今天 17:00', tip: '收尾工作前完成' },
-					{ value: '今天 20:00', tip: '晚间复盘时间' },
-					{ value: '今天 22:00', tip: '睡前检查' }
-				] },
-				{ label: '明天', items: [
-					{ value: '明天 09:00', tip: '晨间优先事项' },
-					{ value: '明天 14:00', tip: '午后空档' },
-					{ value: '明天 19:00', tip: '下班前完成' }
-				] },
-				{ label: '本周', items: [
-					{ value: '周三 10:00', tip: '周中推进' },
-					{ value: '周五 18:00', tip: '周末前收官' },
-					{ value: '周日 21:00', tip: '周总结' }
-				] }
-			],
+		form: {
+			title: '',
+			deadline: '',
+			date: '',
+			time: ''
+		},
 			sideMenuItems: [
 				{ label: '效率洞察', tip: '查看长期趋势' },
 				{ label: '任务模板', tip: '复用高频计划' },
 				{ label: '专注计时', tip: '开启番茄钟' },
 				{ label: '数据同步', tip: 'HarmonyOS 多端共享' }
 			],
-			bottomNavItems: [
-				{ key: 'today', label: '今日', icon: '◎', target: '/pages/index/index' },
-				{ key: 'tracking', label: '番茄钟', icon: '◴', target: '/pages/pomodoro/index' },
-				{ key: 'mine', label: '我的', icon: '△', target: '' }
-			],
+		bottomNavItems: [
+			{ key: 'today', label: '今日', icon: '◎', target: '/pages/index/index' },
+			{ key: 'tracking', label: '番茄钟', icon: '◴', target: '/pages/pomodoro/index' },
+			{ key: 'habit', label: '习惯', icon: '△', target: '/pages/habit/index' }
+		],
 			activeNav: 'today',
 			pomodoroListener: null
 		};
@@ -320,18 +337,47 @@ export default {
 			const day = date.getDate();
 			return `${month}月${day}日`;
 		},
-		canSubmit() {
-			return this.form.title && this.form.deadline;
-		}
+	canSubmit() {
+		return this.form.title.trim().length > 0;
 	},
-	onLoad() {
-		uni.hideTabBar({ animation: false });
-		this.syncPomodoroCount();
-		this.registerPomodoroListener();
-		setTimeout(() => {
-			this.pageLoaded = true;
-		}, 80);
-	},
+	minDate() {
+		const today = new Date();
+		const year = today.getFullYear();
+		const month = String(today.getMonth() + 1).padStart(2, '0');
+		const day = String(today.getDate()).padStart(2, '0');
+		return `${year}-${month}-${day}`;
+	}
+},
+onLoad() {
+	uni.hideTabBar({ animation: false });
+	this.loadLocalData();
+	this.syncPomodoroCount();
+	this.registerPomodoroListener();
+	setTimeout(() => {
+		this.pageLoaded = true;
+	}, 80);
+},
+onPageScroll(e) {
+	if (!e) return;
+	
+	const currentScrollTop = e.scrollTop || 0;
+	const delta = currentScrollTop - this.lastScrollTop;
+	
+	if (Math.abs(delta) < 1) {
+		return;
+	}
+	
+	// 向下滚动超过150时隐藏FAB
+	if (currentScrollTop > 150 && delta > 0) {
+		this.hideFab = true;
+	} 
+	// 向上滚动或滚动位置小于100时显示FAB
+	else if (delta < 0 || currentScrollTop < 100) {
+		this.hideFab = false;
+	}
+	
+	this.lastScrollTop = currentScrollTop;
+},
 	onShow() {
 		this.syncPomodoroCount();
 	},
@@ -374,44 +420,61 @@ export default {
 		toggleAddSheet() {
 			this.showAddSheet = !this.showAddSheet;
 			if (!this.showAddSheet) {
-				this.showDeadlinePicker = false;
+				this.resetForm();
 			}
 		},
-		closeAddSheet() {
-			this.showAddSheet = false;
-			this.showDeadlinePicker = false;
-			// Reset form
-			this.form.title = '';
+	closeAddSheet() {
+		this.showAddSheet = false;
+		this.resetForm();
+	},
+	onDateChange(e) {
+		this.form.date = e.detail.value;
+		this.updateDeadline();
+	},
+	onTimeChange(e) {
+		this.form.time = e.detail.value;
+		this.updateDeadline();
+	},
+	selectNoDeadline() {
+		this.form.deadline = '';
+		this.form.date = '';
+		this.form.time = '';
+	},
+	updateDeadline() {
+		if (this.form.date && this.form.time) {
+			const date = new Date(`${this.form.date} ${this.form.time}`);
+			const today = new Date();
+			today.setHours(0, 0, 0, 0);
+			const taskDate = new Date(date);
+			taskDate.setHours(0, 0, 0, 0);
+			
+			const diffDays = Math.floor((taskDate - today) / (1000 * 60 * 60 * 24));
+			const month = date.getMonth() + 1;
+			const day = date.getDate();
+			const hours = String(date.getHours()).padStart(2, '0');
+			const minutes = String(date.getMinutes()).padStart(2, '0');
+			
+			if (diffDays === 0) {
+				this.form.deadline = `今天 ${hours}:${minutes}`;
+			} else if (diffDays === 1) {
+				this.form.deadline = `明天 ${hours}:${minutes}`;
+			} else if (diffDays === -1) {
+				this.form.deadline = `昨天 ${hours}:${minutes}`;
+			} else {
+				this.form.deadline = `${month}月${day}日 ${hours}:${minutes}`;
+			}
+		} else {
 			this.form.deadline = '';
-			this.form.tomatoes = 3;
-		},
-		openDeadlinePicker() {
-			this.showDeadlinePicker = true;
-		},
-		closeDeadlinePicker() {
-			this.showDeadlinePicker = false;
-		},
-		selectDeadline(option) {
-			this.form.deadline = option.value;
-		},
-		onTomatoChange(event) {
-			this.form.tomatoes = event.detail.value;
-		},
-		onBottomNavTap(item) {
-			if (item.key === this.activeNav) {
-				return;
-			}
-			if (item.key === 'mine') {
-				uni.showToast({
-					title: '敬请期待',
-					icon: 'none'
-				});
-				return;
-			}
-			if (item.target) {
-				uni.switchTab({ url: item.target });
-			}
-		},
+		}
+	},
+	onBottomNavTap(item) {
+		if (item.key === this.activeNav) {
+			return;
+		}
+		if (item.target) {
+			uni.switchTab({ url: item.target });
+		}
+	},
 		onTaskToggle(task, event) {
 			const checked = event.detail.value;
 			if (task.done === checked) {
@@ -424,77 +487,117 @@ export default {
 				this.dailyStats.completed = Math.max(this.dailyStats.completed - 1, 0);
 			}
 		},
-		toggleTaskDone(task) {
-			task.done = !task.done;
-			if (task.done) {
-				this.dailyStats.completed += 1;
+	toggleTaskDone(task) {
+		task.done = !task.done;
+		if (task.done) {
+			this.dailyStats.completed += 1;
+		} else {
+			this.dailyStats.completed = Math.max(this.dailyStats.completed - 1, 0);
+		}
+		this.saveLocalData();
+	},
+	editTask(task) {
+		this.editingTask = task;
+		this.form.title = task.title;
+		this.form.deadline = task.deadline;
+		
+		// 解析deadline为date和time
+		if (task.deadline && task.deadline !== '无截止时间') {
+			const today = new Date();
+			let targetDate = new Date();
+			
+			if (task.deadline.includes('今天')) {
+				targetDate = new Date(today);
+			} else if (task.deadline.includes('明天')) {
+				targetDate = new Date(today);
+				targetDate.setDate(today.getDate() + 1);
 			} else {
-				this.dailyStats.completed = Math.max(this.dailyStats.completed - 1, 0);
+				// 解析 "X月X日 HH:MM" 格式
+				const match = task.deadline.match(/(\d+)月(\d+)日\s+(\d+):(\d+)/);
+				if (match) {
+					targetDate = new Date(today.getFullYear(), parseInt(match[1]) - 1, parseInt(match[2]));
+				}
 			}
-		},
-		editTask(task) {
-			this.editingTask = task;
-			this.form.title = task.title;
-			this.form.deadline = task.deadline;
-			this.showEditSheet = true;
-		},
-		deleteTask(task) {
-			uni.showModal({
-				title: '确认删除',
-				content: '确定要删除这个任务吗？',
-				success: (res) => {
-					if (res.confirm) {
-						const index = this.tasks.findIndex(t => t.id === task.id);
-						if (index !== -1) {
-							this.tasks.splice(index, 1);
-							this.dailyStats.active = Math.max(this.dailyStats.active - 1, 0);
-							if (task.done) {
-								this.dailyStats.completed = Math.max(this.dailyStats.completed - 1, 0);
-							}
+			
+			// 提取时间
+			const timeMatch = task.deadline.match(/(\d+):(\d+)/);
+			if (timeMatch) {
+				targetDate.setHours(parseInt(timeMatch[1]), parseInt(timeMatch[2]));
+			}
+			
+			const year = targetDate.getFullYear();
+			const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+			const day = String(targetDate.getDate()).padStart(2, '0');
+			const hours = String(targetDate.getHours()).padStart(2, '0');
+			const minutes = String(targetDate.getMinutes()).padStart(2, '0');
+			
+			this.form.date = `${year}-${month}-${day}`;
+			this.form.time = `${hours}:${minutes}`;
+		} else {
+			this.form.date = '';
+			this.form.time = '';
+		}
+		
+		this.showEditSheet = true;
+	},
+	deleteTask(task) {
+		uni.showModal({
+			title: '确认删除',
+			content: '确定要删除这个任务吗？',
+			success: (res) => {
+				if (res.confirm) {
+					const index = this.tasks.findIndex(t => t.id === task.id);
+					if (index !== -1) {
+						this.tasks.splice(index, 1);
+						this.dailyStats.active = Math.max(this.dailyStats.active - 1, 0);
+						if (task.done) {
+							this.dailyStats.completed = Math.max(this.dailyStats.completed - 1, 0);
 						}
+						this.saveLocalData();
 					}
 				}
-			});
-		},
-		confirmTask() {
-			if (!this.canSubmit) {
-				return;
 			}
-			const newTask = {
-				id: Date.now(),
-				title: this.form.title,
-				deadline: this.form.deadline,
-				done: false,
-				expired: false
-			};
-			this.tasks.unshift(newTask);
-			this.dailyStats.active += 1;
-			this.form.title = '';
-			this.form.deadline = '';
-			this.form.tomatoes = 3;
-			this.closeAddSheet();
-		},
-		confirmEditTask() {
-			if (!this.canSubmit || !this.editingTask) {
-				return;
-			}
-			this.editingTask.title = this.form.title;
-			this.editingTask.deadline = this.form.deadline;
-			this.form.title = '';
-			this.form.deadline = '';
-			this.form.tomatoes = 3;
-			this.editingTask = null;
-			this.closeEditSheet();
-		},
-		closeEditSheet() {
-			this.showEditSheet = false;
-			this.showDeadlinePicker = false;
-			this.editingTask = null;
-			// Reset form
-			this.form.title = '';
-			this.form.deadline = '';
-			this.form.tomatoes = 3;
-		},
+		});
+	},
+	confirmTask() {
+		if (!this.canSubmit) {
+			return;
+		}
+		const newTask = {
+			id: Date.now(),
+			title: this.form.title,
+			deadline: this.form.deadline || '无截止时间',
+			done: false,
+			expired: false
+		};
+		this.tasks.unshift(newTask);
+		this.dailyStats.active += 1;
+		this.saveLocalData();
+		this.resetForm();
+		this.closeAddSheet();
+	},
+	confirmEditTask() {
+		if (!this.canSubmit || !this.editingTask) {
+			return;
+		}
+		this.editingTask.title = this.form.title;
+		this.editingTask.deadline = this.form.deadline || '无截止时间';
+		this.saveLocalData();
+		this.resetForm();
+		this.editingTask = null;
+		this.closeEditSheet();
+	},
+	resetForm() {
+		this.form.title = '';
+		this.form.deadline = '';
+		this.form.date = '';
+		this.form.time = '';
+	},
+	closeEditSheet() {
+		this.showEditSheet = false;
+		this.editingTask = null;
+		this.resetForm();
+	},
 		registerPomodoroListener() {
 			if (this.pomodoroListener) {
 				return;
@@ -528,14 +631,37 @@ export default {
 			}
 			return {};
 		},
-		buildTodayKey() {
-			const date = new Date();
-			const year = date.getFullYear();
-			const month = String(date.getMonth() + 1).padStart(2, '0');
-			const day = String(date.getDate()).padStart(2, '0');
-			return `${year}-${month}-${day}`;
+	buildTodayKey() {
+		const date = new Date();
+		const year = date.getFullYear();
+		const month = String(date.getMonth() + 1).padStart(2, '0');
+		const day = String(date.getDate()).padStart(2, '0');
+		return `${year}-${month}-${day}`;
+	},
+	saveLocalData() {
+		try {
+			uni.setStorageSync('todayTasks', this.tasks);
+			uni.setStorageSync('todayStats', this.dailyStats);
+		} catch (err) {
+			console.error('保存数据失败:', err);
 		}
-	}
+	},
+	loadLocalData() {
+		try {
+			const savedTasks = uni.getStorageSync('todayTasks');
+			const savedStats = uni.getStorageSync('todayStats');
+			
+			if (savedTasks && Array.isArray(savedTasks)) {
+				this.tasks = savedTasks;
+			}
+			if (savedStats && typeof savedStats === 'object') {
+				this.dailyStats = { ...this.dailyStats, ...savedStats };
+			}
+		} catch (err) {
+			console.error('加载数据失败:', err);
+		}
+	},
+}
 };
 </script>
 
@@ -546,6 +672,7 @@ export default {
 	background: linear-gradient(160deg, #0f1b2b 0%, #1b2d45 55%, #18323e 100%);
 	color: #f6f7fb;
 	overflow: hidden;
+	padding-bottom: 200rpx;
 }
 
 .page__frost {
@@ -687,10 +814,23 @@ export default {
 
 .main {
 	position: relative;
-	padding: 0 40rpx 220rpx;
+	padding: 0 40rpx;
+	padding-bottom: calc(240rpx + env(safe-area-inset-bottom));
 	box-sizing: border-box;
 	z-index: 2;
-	padding-bottom: calc(240rpx + env(safe-area-inset-bottom));
+}
+
+/* 底部渐变遮罩 */
+.main::after {
+	content: '';
+	position: fixed;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	height: 200rpx;
+	background: linear-gradient(to top, rgba(15, 27, 43, 0.95) 0%, rgba(15, 27, 43, 0.6) 40%, transparent 100%);
+	pointer-events: none;
+	z-index: 1;
 }
 
 .efficiency {
@@ -947,6 +1087,54 @@ export default {
 	color: rgba(255,255,255,0.6);
 }
 
+/* 页面底部装饰 */
+.page-footer {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 12rpx;
+	padding: 30rpx 0 20rpx;
+	opacity: 0.5;
+}
+
+.page-footer__text {
+	font-size: 24rpx;
+	color: rgba(255,255,255,0.6);
+	letter-spacing: 2rpx;
+}
+
+.page-footer__dots {
+	display: flex;
+	gap: 12rpx;
+}
+
+.page-footer__dots .dot {
+	width: 8rpx;
+	height: 8rpx;
+	border-radius: 50%;
+	background: rgba(255,255,255,0.3);
+	animation: dot-fade 2s infinite;
+}
+
+.page-footer__dots .dot:nth-child(2) {
+	animation-delay: 0.3s;
+}
+
+.page-footer__dots .dot:nth-child(3) {
+	animation-delay: 0.6s;
+}
+
+@keyframes dot-fade {
+	0%, 100% {
+		opacity: 0.3;
+		transform: scale(1);
+	}
+	50% {
+		opacity: 1;
+		transform: scale(1.2);
+	}
+}
+
 .bottom-bar {
 	position: fixed;
 	left: 40rpx;
@@ -959,6 +1147,7 @@ export default {
 	justify-content: space-around;
 	z-index: 3;
 	padding: 0 32rpx;
+	transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
 .bottom-bar__item {
@@ -987,6 +1176,12 @@ export default {
 	color: rgba(255,255,255,0.35);
 }
 
+.bottom-bar--hidden {
+	opacity: 0 !important;
+	pointer-events: none !important;
+	transform: translateY(120%) !important;
+}
+
 .fab {
 	position: fixed;
 	width: 140rpx;
@@ -994,7 +1189,8 @@ export default {
 	border-radius: 70rpx;
 	background: linear-gradient(135deg, rgba(110,203,255,0.9), rgba(200,155,255,0.9));
 	box-shadow: 0 28rpx 46rpx rgba(10, 20, 35, 0.55);
-	bottom: 180rpx;
+	bottom: calc(200rpx + constant(safe-area-inset-bottom));
+	bottom: calc(200rpx + env(safe-area-inset-bottom));
 	right: 70rpx;
 	display: flex;
 	align-items: center;
@@ -1004,12 +1200,19 @@ export default {
 	font-weight: 400;
 	z-index: 10;
 	transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
-		box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+		box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+		opacity 0.3s ease;
 }
 
 .fab--pulse {
 	transform: scale(1.06);
 	box-shadow: 0 32rpx 56rpx rgba(8, 16, 30, 0.55);
+}
+
+.fab--hidden {
+	opacity: 0 !important;
+	pointer-events: none !important;
+	transform: translateY(30rpx) scale(0.8) !important;
 }
 
 .fab__icon {
@@ -1056,10 +1259,38 @@ export default {
 	margin: 0 auto 30rpx;
 }
 
+.sheet__header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 40rpx;
+}
+
 .sheet__title {
 	font-size: 34rpx;
 	font-weight: 600;
-	margin-bottom: 40rpx;
+}
+
+.sheet__close {
+	width: 60rpx;
+	height: 60rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(255,255,255,0.08);
+	border-radius: 50%;
+	transition: all 0.3s ease;
+}
+
+.sheet__close:active {
+	background: rgba(255,123,138,0.2);
+	transform: scale(0.9);
+}
+
+.sheet__close-icon {
+	font-size: 36rpx;
+	color: rgba(255,255,255,0.8);
+	font-weight: 300;
 }
 
 .form-field {
@@ -1099,9 +1330,59 @@ export default {
 	justify-content: space-between;
 }
 
+.form-value--picker {
+	flex: 1;
+	margin-left: 16rpx;
+}
+
+.form-value--picker:first-of-type {
+	margin-left: 0;
+}
+
 .form-arrow {
 	font-size: 36rpx;
 	color: rgba(255,255,255,0.45);
+}
+
+.deadline-options {
+	display: flex;
+	flex-direction: row;
+	gap: 16rpx;
+	align-items: center;
+	flex-wrap: wrap;
+}
+
+.deadline-option-item {
+	flex: 0 0 auto;
+	padding: 20rpx 24rpx;
+	background: rgba(255,255,255,0.06);
+	border: 2rpx solid rgba(255,255,255,0.1);
+	border-radius: 20rpx;
+	text-align: center;
+	transition: all 0.3s ease;
+}
+
+.deadline-option-item--active {
+	background: rgba(110,203,255,0.15);
+	border-color: rgba(110,203,255,0.4);
+}
+
+.deadline-option-item__text {
+	font-size: 26rpx;
+	color: rgba(255,255,255,0.9);
+}
+
+.form-deadline-display {
+	margin-top: 16rpx;
+	padding: 16rpx 20rpx;
+	background: rgba(110,203,255,0.1);
+	border-radius: 16rpx;
+	border: 1rpx solid rgba(110,203,255,0.2);
+}
+
+.form-deadline-display__text {
+	font-size: 26rpx;
+	color: #6ecbff;
 }
 
 .form-slider {
