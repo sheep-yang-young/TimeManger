@@ -45,8 +45,8 @@
 						<view class="stat-card__bar">
 							<view class="stat-card__bar-fill" :style="{ width: card.progress, backgroundImage: card.gradient }"></view>
 						</view>
+						<text class="stat-card__extra">{{ card.extra }}</text>
 						<view class="stat-card__footer">
-							<text class="stat-card__extra">{{ card.extra }}</text>
 							<text class="stat-card__status" :class="`stat-card__status--${card.status}`">{{ card.statusLabel }}</text>
 						</view>
 					</view>
@@ -97,7 +97,7 @@
 			</view>
 		</view>
 
-		<view class="fab" :class="{ 'fab--pulse': showAddSheet, 'fab--hidden': hideFab }" @tap.stop="toggleAddSheet">
+		<view class="fab" :class="{ 'fab--pulse': showAddSheet, 'fab--hidden': hideFab || showSideMenu }" @tap.stop="toggleAddSheet">
 			<text class="fab__icon">+</text>
 		</view>
 
@@ -213,9 +213,7 @@ export default {
 			sideMenuItems: [
 				{ label: '日历', tip: '查看历史事项', action: 'calendar' },
 				{ label: '效率洞察', tip: '查看长期趋势' },
-				{ label: '任务模板', tip: '复用高频计划' },
-				{ label: '专注计时', tip: '开启番茄钟' },
-				{ label: '数据同步', tip: 'HarmonyOS 多端共享' }
+				{ label: '数据同步', tip: '多端共享', action: 'sync' }
 			],
 		bottomNavItems: [
 			{ key: 'today', label: '今日', icon: '◎', target: '/pages/index/index' },
@@ -306,7 +304,7 @@ export default {
 					label: '过期控制',
 					value: controlPercent,
 					desc: '保持任务不过期，节奏才更轻松',
-					extra: `仅有 ${this.dailyStats.expired} 项过期 (目标 ≤ ${this.dailyStats.expiredGoal})`,
+					extra: `仅有 ${this.dailyStats.expired} 项过期 `,
 					progress: controlPercent,
 					gradient: this.statGradients.overdue,
 					status: overdueStatus,
@@ -421,6 +419,13 @@ onPageScroll(e) {
 					url: '/pages/calendar/index'
 				});
 				this.showSideMenu = false;
+				return;
+			}
+			if (item.action === 'sync') {
+				uni.showToast({
+					title: '正在开发，敬请期待',
+					icon: 'none'
+				});
 			}
 		},
 		toggleAddSheet() {
@@ -1013,13 +1018,14 @@ onPageScroll(e) {
 
 .stat-card {
 	position: relative;
-	padding: 28rpx;
+	padding: 28rpx 28rpx 32rpx;
 	border-radius: 26rpx;
 	background: rgba(255,255,255,0.06);
 	border: 1rpx solid rgba(255,255,255,0.1);
 	display: flex;
 	flex-direction: column;
 	gap: 18rpx;
+	min-height: 260rpx;
 	box-shadow: 0 18rpx 48rpx rgba(6, 14, 26, 0.32);
 	transform: translateY(0);
 	transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
@@ -1086,10 +1092,17 @@ onPageScroll(e) {
 
 .stat-card__footer {
 	display: flex;
-	justify-content: space-between;
+	justify-content: flex-end;
 	align-items: center;
 	font-size: 22rpx;
 	color: rgba(255,255,255,0.55);
+	margin-top: auto;
+}
+
+.stat-card__extra {
+	line-height: 1.6;
+	color: rgba(255,255,255,0.7);
+	font-size: 24rpx;
 }
 
 .stat-card__status {
