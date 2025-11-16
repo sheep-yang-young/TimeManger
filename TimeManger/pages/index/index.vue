@@ -572,12 +572,18 @@ onPageScroll(e) {
 		if (!this.canSubmit) {
 			return;
 		}
+		const now = new Date();
+		const createdDate = this.buildTodayKey();
+		const targetDate = this.extractTargetDateFromDeadline(this.form.deadline, this.form.date);
+		
 		const newTask = {
 			id: Date.now(),
 			title: this.form.title,
 			deadline: this.form.deadline || '无截止时间',
 			done: false,
-			expired: false
+			expired: false,
+			createdDate: createdDate,
+			targetDate: targetDate
 		};
 		this.tasks.unshift(newTask);
 		this.dailyStats.active += 1;
@@ -591,6 +597,11 @@ onPageScroll(e) {
 		}
 		this.editingTask.title = this.form.title;
 		this.editingTask.deadline = this.form.deadline || '无截止时间';
+		this.editingTask.targetDate = this.extractTargetDateFromDeadline(this.form.deadline, this.form.date);
+		// Preserve createdDate if it exists, otherwise set it to today
+		if (!this.editingTask.createdDate) {
+			this.editingTask.createdDate = this.buildTodayKey();
+		}
 		this.saveLocalData();
 		this.resetForm();
 		this.editingTask = null;
@@ -647,6 +658,45 @@ onPageScroll(e) {
 		const day = String(date.getDate()).padStart(2, '0');
 		return `${year}-${month}-${day}`;
 	},
+	extractTargetDateFromDeadline(deadlineText, dateValue) {
+		// If no deadline, return null (task applies to all days from creation)
+		if (!deadlineText || deadlineText === '无截止时间') {
+			return null;
+		}
+		
+		// If we have a date value from the picker, use it
+		if (dateValue) {
+			return dateValue;
+		}
+		
+		// Parse deadline text to extract target date
+		const today = new Date();
+		let targetDate = new Date(today);
+		
+		if (deadlineText.includes('今天')) {
+			// Already set to today
+		} else if (deadlineText.includes('明天')) {
+			targetDate.setDate(today.getDate() + 1);
+		} else if (deadlineText.includes('昨天')) {
+			targetDate.setDate(today.getDate() - 1);
+		} else {
+			// Try to parse "X月X日" format
+			const match = deadlineText.match(/(\d+)月(\d+)日/);
+			if (match) {
+				const month = parseInt(match[1]) - 1;
+				const day = parseInt(match[2]);
+				targetDate = new Date(today.getFullYear(), month, day);
+			} else {
+				// If can't parse, return null
+				return null;
+			}
+		}
+		
+		const year = targetDate.getFullYear();
+		const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+		const day = String(targetDate.getDate()).padStart(2, '0');
+		return `${year}-${month}-${day}`;
+	},
 	saveLocalData() {
 		try {
 			uni.setStorageSync('todayTasks', this.tasks);
@@ -676,7 +726,17 @@ onPageScroll(e) {
 			const savedStats = uni.getStorageSync('todayStats');
 			
 			if (savedTasks && Array.isArray(savedTasks)) {
-				this.tasks = savedTasks;
+				// Migrate old tasks to add metadata if missing
+				const todayKey = this.buildTodayKey();
+				this.tasks = savedTasks.map(task => {
+					if (!task.createdDate) {
+						task.createdDate = todayKey;
+					}
+					if (task.targetDate === undefined) {
+						task.targetDate = this.extractTargetDateFromDeadline(task.deadline, null);
+					}
+					return task;
+				});
 			}
 			if (savedStats && typeof savedStats === 'object') {
 				this.dailyStats = { ...this.dailyStats, ...savedStats };
