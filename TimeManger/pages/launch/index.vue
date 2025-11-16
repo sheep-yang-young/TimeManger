@@ -93,24 +93,28 @@ export default {
 		
 		preloadWithNavigation(tabBarPages) {
 			// 对于 HarmonyOS 平台，由于启动页不是 tabBar，无法直接 switchTab
-			// 我们显示加载动画，然后跳转到首页，让首页在后台完成预加载
+			// 我们需要先跳转到首页，然后在首页执行预加载
+			// 但为了用户体验，我们先显示加载动画
 			this.loadingText = '正在准备...'
 			this.loadingStep = 2
 			
-			// 模拟加载过程，给用户良好的体验
+			// 先跳转到首页（使用 switchTab，因为首页是 tabBar）
+			// 然后让首页执行预加载
 			setTimeout(() => {
-				this.loadingText = '即将完成...'
-				this.loadingStep = 3
-			}, 300)
-			
-			// 等待一段时间后跳转到首页
-			// 首页会延迟显示内容，等待预加载完成
-			setTimeout(() => {
-				this.loadingText = '加载完成'
-				setTimeout(() => {
-					this.navigateToHome()
-				}, 200)
-			}, 600)
+				// 跳转到首页，首页会执行预加载
+				uni.switchTab({
+					url: '/pages/index/index',
+					success: () => {
+						console.log('✓ 已跳转到首页，开始预加载')
+						// 在首页执行预加载（首页的 onLoad 会自动触发预加载）
+					},
+					fail: (err) => {
+						console.warn('✗ 跳转首页失败', err)
+						// 如果 switchTab 失败，尝试 reLaunch
+						this.navigateToHome()
+					}
+				})
+			}, 500)
 		},
 		
 		updateProgress(completed, total) {

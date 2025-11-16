@@ -356,21 +356,30 @@ onLoad() {
 	this.syncPomodoroCount();
 	this.registerPomodoroListener();
 	
-	// 如果是首次启动，延迟显示内容，等待预加载完成
-	if (isFromLaunch && typeof getApp === 'function') {
+	// 检查是否需要执行预加载
+	if (typeof getApp === 'function') {
 		const app = getApp();
 		if (app && app.globalData && !app.globalData.preloadStarted) {
+			// 首次启动，需要执行预加载
 			app.globalData.preloadStarted = true;
-			// 延迟显示，等待预加载完成
+			console.log('首页：开始执行预加载...');
+			
+			// 立即开始预加载（不等待）
+			if (app.preloadAllPages && typeof app.preloadAllPages === 'function') {
+				console.log('首页：使用 app.preloadAllPages 执行预加载');
+				app.preloadAllPages();
+			} else if (app.$options && app.$options.methods && app.$options.methods.preloadAllPages) {
+				console.log('首页：使用 app.$options.methods.preloadAllPages 执行预加载');
+				app.$options.methods.preloadAllPages.call(app);
+			} else {
+				console.warn('首页：无法找到预加载方法');
+			}
+			
+			// 延迟显示内容，等待预加载完成
 			setTimeout(() => {
+				console.log('首页：显示内容');
 				this.pageLoaded = true;
-				// 在后台执行预加载（HarmonyOS 平台）
-				if (app.$options && app.$options.methods && app.$options.methods.preloadAllPages) {
-					setTimeout(() => {
-						app.$options.methods.preloadAllPages.call(app);
-					}, 300);
-				}
-			}, 800); // 延迟显示，给预加载时间
+			}, 1500); // 增加延迟时间，确保预加载完成（3个页面，每个约500ms）
 		} else {
 			// 非首次启动，正常显示
 			setTimeout(() => {
@@ -378,7 +387,7 @@ onLoad() {
 			}, 80);
 		}
 	} else {
-		// 非首次启动，正常显示
+		// 无法获取 app 实例，正常显示
 		setTimeout(() => {
 			this.pageLoaded = true;
 		}, 80);

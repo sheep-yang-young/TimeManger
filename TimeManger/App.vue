@@ -7,6 +7,15 @@
 			console.log('App Launch')
 			// 预加载逻辑已移至启动页面，这里不再执行
 			// 启动页面会在显示时自动开始预加载
+			// 将预加载方法暴露到 app 实例上，方便外部调用
+			const app = this
+			// 延迟绑定，确保 methods 已初始化
+			this.$nextTick(() => {
+				if (this.preloadAllPages) {
+					app.preloadAllPages = this.preloadAllPages.bind(app)
+					console.log('✓ 预加载方法已暴露到 app 实例')
+				}
+			})
 		},
 		onShow: function() {
 			console.log('App Show')
