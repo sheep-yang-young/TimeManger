@@ -348,6 +348,7 @@ export default {
 onLoad() {
 	uni.hideTabBar({ animation: false });
 	this.loadLocalData();
+	this.initializeSampleTasks();
 	this.syncPomodoroCount();
 	this.registerPomodoroListener();
 	setTimeout(() => {
@@ -740,6 +741,65 @@ onPageScroll(e) {
 		} catch (err) {
 			console.error('加载数据失败:', err);
 		}
+	},
+	initializeSampleTasks() {
+		// Only add sample tasks if there are no existing tasks
+		if (this.tasks.length === 0) {
+			const todayKey = this.buildTodayKey();
+			const tomorrow = new Date();
+			tomorrow.setDate(tomorrow.getDate() + 1);
+			const tomorrowKey = this.getDateKey(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate());
+			
+			this.tasks = [
+				{ 
+					id: Date.now() + 1, 
+					title: '整理会议纪要', 
+					deadline: '今天 18:30', 
+					done: false, 
+					expired: false,
+					createdDate: todayKey,
+					targetDate: todayKey
+				},
+				{ 
+					id: Date.now() + 2, 
+					title: '晚间冥想 20 分钟', 
+					deadline: '今天 21:00', 
+					done: true, 
+					expired: false,
+					createdDate: todayKey,
+					targetDate: todayKey
+				},
+				{ 
+					id: Date.now() + 3, 
+					title: '复盘项目进度', 
+					deadline: '明天 09:00', 
+					done: false, 
+					expired: false,
+					createdDate: todayKey,
+					targetDate: tomorrowKey
+				},
+				{ 
+					id: Date.now() + 4, 
+					title: '每日锻炼计划', 
+					deadline: '无截止时间', 
+					done: false, 
+					expired: false,
+					createdDate: todayKey,
+					targetDate: null
+				}
+			];
+			
+			this.dailyStats.active = 4;
+			this.dailyStats.completed = 1;
+			
+			// Save the sample tasks
+			this.saveLocalData();
+		}
+	},
+	getDateKey(year, month, day) {
+		const m = String(month + 1).padStart(2, '0');
+		const d = String(day).padStart(2, '0');
+		return `${year}-${m}-${d}`;
 	},
 }
 };
