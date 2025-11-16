@@ -210,13 +210,13 @@ export default {
 			date: '',
 			time: ''
 		},
-			sideMenuItems: [
-				{ label: '日历', tip: '查看历史事项', action: 'calendar' },
-				{ label: '效率洞察', tip: '查看长期趋势' },
-				{ label: '数据同步', tip: '多端共享', action: 'sync' }
-			],
+		sideMenuItems: [
+			{ label: '效率洞察', tip: '查看长期趋势' },
+			{ label: '数据同步', tip: '多端共享', action: 'sync' }
+		],
 		bottomNavItems: [
 			{ key: 'today', label: '今日', icon: '◎', target: '/pages/index/index' },
+			{ key: 'calendar', label: '日历', icon: '◉', target: '/pages/calendar/index' },
 			{ key: 'tracking', label: '番茄钟', icon: '◴', target: '/pages/pomodoro/index' },
 			{ key: 'habit', label: '习惯', icon: '△', target: '/pages/habit/index' }
 		],
@@ -345,13 +345,44 @@ export default {
 },
 onLoad() {
 	uni.hideTabBar({ animation: false });
+	
+	// 检查是否从启动页跳转过来（首次启动）
+	const pages = getCurrentPages();
+	const isFromLaunch = pages.length === 1;
+	
+	// 先加载数据
 	this.loadLocalData();
 	this.initializeSampleTasks();
 	this.syncPomodoroCount();
 	this.registerPomodoroListener();
-	setTimeout(() => {
-		this.pageLoaded = true;
-	}, 80);
+	
+	// 如果是首次启动，延迟显示内容，等待预加载完成
+	if (isFromLaunch && typeof getApp === 'function') {
+		const app = getApp();
+		if (app && app.globalData && !app.globalData.preloadStarted) {
+			app.globalData.preloadStarted = true;
+			// 延迟显示，等待预加载完成
+			setTimeout(() => {
+				this.pageLoaded = true;
+				// 在后台执行预加载（HarmonyOS 平台）
+				if (app.$options && app.$options.methods && app.$options.methods.preloadAllPages) {
+					setTimeout(() => {
+						app.$options.methods.preloadAllPages.call(app);
+					}, 300);
+				}
+			}, 800); // 延迟显示，给预加载时间
+		} else {
+			// 非首次启动，正常显示
+			setTimeout(() => {
+				this.pageLoaded = true;
+			}, 80);
+		}
+	} else {
+		// 非首次启动，正常显示
+		setTimeout(() => {
+			this.pageLoaded = true;
+		}, 80);
+	}
 },
 onPageScroll(e) {
 	if (!e) return;
@@ -414,13 +445,6 @@ onPageScroll(e) {
 			this.showSideMenu = !this.showSideMenu;
 		},
 		onSideMenuItemTap(item) {
-			if (item.action === 'calendar') {
-				uni.navigateTo({
-					url: '/pages/calendar/index'
-				});
-				this.showSideMenu = false;
-				return;
-			}
 			if (item.action === 'sync') {
 				uni.showToast({
 					title: '正在开发，敬请期待',

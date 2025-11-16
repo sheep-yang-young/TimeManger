@@ -205,6 +205,7 @@ export default {
 			planFocusSeconds: 0,
 		bottomNavItems: [
 			{ key: 'today', label: '今日', icon: '◎', target: '/pages/index/index' },
+			{ key: 'calendar', label: '日历', icon: '◉', target: '/pages/calendar/index' },
 			{ key: 'tracking', label: '番茄钟', icon: '◴', target: '/pages/pomodoro/index' },
 			{ key: 'habit', label: '习惯', icon: '△', target: '/pages/habit/index' }
 		],

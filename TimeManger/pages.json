@@ -1,11 +1,28 @@
 {
 	"pages": [
 		{
+			"path": "pages/launch/index",
+			"style": {
+				"navigationBarTitleText": "启动中",
+				"navigationStyle": "custom",
+				"enablePullDownRefresh": false
+			}
+		},
+		{
 			"path": "pages/index/index",
 			"style": {
 				"navigationBarTitleText": "今日",
 				"navigationStyle": "custom",
 				"enablePullDownRefresh": false
+			}
+		},
+		{
+			"path": "pages/calendar/index",
+			"style": {
+				"navigationBarTitleText": "日历",
+				"navigationStyle": "custom",
+				"enablePullDownRefresh": false,
+				"disableScroll": false
 			}
 		},
 		{
@@ -23,16 +40,19 @@
 				"navigationStyle": "custom",
 				"enablePullDownRefresh": false
 			}
-		},
-		{
-			"path": "pages/calendar/index",
-			"style": {
-				"navigationBarTitleText": "日历",
-				"navigationStyle": "custom",
-				"enablePullDownRefresh": false
-			}
 		}
 	],
+	"preloadRule": {
+		"pages/index/index": {
+			"network": "all",
+			"packages": ["__APP__"],
+			"pages": [
+				"pages/pomodoro/index",
+				"pages/habit/index",
+				"pages/calendar/index"
+			]
+		}
+	},
 	"globalStyle": {
 		"navigationBarTextStyle": "white",
 		"navigationBarTitleText": "TimeManager",
@@ -52,17 +72,23 @@
 				"selectedIconPath": "static/tabbar/home-active.png"
 			},
 			{
+				"pagePath": "pages/calendar/index",
+				"text": "日历",
+				"iconPath": "static/tabbar/home.png",
+				"selectedIconPath": "static/tabbar/home-active.png"
+			},
+			{
 				"pagePath": "pages/pomodoro/index",
 				"text": "番茄钟",
 				"iconPath": "static/tabbar/stats.png",
 				"selectedIconPath": "static/tabbar/stats-active.png"
 			},
-		{
-			"pagePath": "pages/habit/index",
-			"text": "习惯",
-			"iconPath": "static/tabbar/user.png",
-			"selectedIconPath": "static/tabbar/user-active.png"
-		}
+			{
+				"pagePath": "pages/habit/index",
+				"text": "习惯",
+				"iconPath": "static/tabbar/user.png",
+				"selectedIconPath": "static/tabbar/user-active.png"
+			}
 		]
 	},
 	"uniIdRouter": {}

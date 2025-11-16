@@ -63,20 +63,24 @@
 			</view>
 		</view>
 	</view>
+
+	<!-- 底部导航栏 -->
+	<view class="bottom-bar glass" :class="{ 'glass--active': pageLoaded }">
+		<view
+			class="bottom-bar__item"
+			v-for="item in bottomNavItems"
+			:key="item.key"
+			:class="{ 'bottom-bar__item--active': activeNav === item.key }"
+			@tap="onBottomNavTap(item)"
+		>
+			<text class="bottom-bar__icon">{{ item.icon }}</text>
+			<text class="bottom-bar__label">{{ item.label }}</text>
+		</view>
+	</view>
 </template>
 
 <script>
 export default {
-	data() {
-		return {
-			pageLoaded: false,
-			currentYear: 0,
-			currentMonth: 0,
-			selectedDate: null,
-			weekdays: ['日', '一', '二', '三', '四', '五', '六'],
-			allTasks: {}
-		};
-	},
 	computed: {
 		currentMonthLabel() {
 			return `${this.currentYear}年${this.currentMonth + 1}月`;
@@ -173,29 +177,65 @@ export default {
 			return dates;
 		}
 	},
-	onLoad() {
-		const today = new Date();
-		this.currentYear = today.getFullYear();
-		this.currentMonth = today.getMonth();
-		this.selectedDate = {
-			year: today.getFullYear(),
-			month: today.getMonth(),
-			day: today.getDate()
+	data() {
+		return {
+			pageLoaded: false,
+			currentYear: 0,
+			currentMonth: 0,
+			selectedDate: null,
+			weekdays: ['日', '一', '二', '三', '四', '五', '六'],
+			allTasks: {},
+			_isInitialized: false,  // 标记是否已初始化
+			bottomNavItems: [
+				{ key: 'today', label: '今日', icon: '◎', target: '/pages/index/index' },
+				{ key: 'calendar', label: '日历', icon: '◉', target: '/pages/calendar/index' },
+				{ key: 'tracking', label: '番茄钟', icon: '◴', target: '/pages/pomodoro/index' },
+				{ key: 'habit', label: '习惯', icon: '△', target: '/pages/habit/index' }
+			],
+			activeNav: 'calendar'
 		};
-		
-		this.loadAllTasks();
-		
-		setTimeout(() => {
+	},
+	onLoad() {
+		// 只在首次加载时初始化
+		if (!this._isInitialized) {
+			const today = new Date();
+			this.currentYear = today.getFullYear();
+			this.currentMonth = today.getMonth();
+			this.selectedDate = {
+				year: today.getFullYear(),
+				month: today.getMonth(),
+				day: today.getDate()
+			};
+			
+			this.loadAllTasks();
+			this._isInitialized = true;
+			
+			setTimeout(() => {
+				this.pageLoaded = true;
+			}, 80);
+		} else {
+			// 已初始化，直接显示
 			this.pageLoaded = true;
-		}, 80);
+		}
 	},
 	onShow() {
-		// Reload tasks when the page becomes visible
+		// 设置当前激活的导航项
+		this.activeNav = 'calendar';
+		// 只刷新任务数据，不重新初始化
 		this.loadAllTasks();
 	},
 	methods: {
 		goBack() {
+			// 切换到首页
 			uni.switchTab({ url: '/pages/index/index' });
+		},
+		onBottomNavTap(item) {
+			if (item.key === this.activeNav) {
+				return;
+			}
+			if (item.target) {
+				uni.switchTab({ url: item.target });
+			}
 		},
 		prevMonth() {
 			if (this.currentMonth === 0) {
@@ -371,15 +411,11 @@ export default {
 <style scoped>
 .page {
 	position: relative;
-	min-height: calc(100vh + env(safe-area-inset-bottom));
-	min-height: calc(100vh + constant(safe-area-inset-bottom));
-	display: flex;
-	flex-direction: column;
+	min-height: 100vh;
 	background: linear-gradient(160deg, #0f1b2b 0%, #1b2d45 55%, #18323e 100%);
 	color: #f6f7fb;
 	overflow: hidden;
-	padding-bottom: calc(200rpx + env(safe-area-inset-bottom));
-	padding-bottom: calc(200rpx + constant(safe-area-inset-bottom));
+	padding-bottom: 200rpx;
 }
 
 .page__frost {
@@ -453,10 +489,8 @@ export default {
 	position: relative;
 	padding: 0 40rpx;
 	padding-bottom: calc(240rpx + env(safe-area-inset-bottom));
-	padding-bottom: calc(240rpx + constant(safe-area-inset-bottom));
 	box-sizing: border-box;
 	z-index: 2;
-	flex: 1;
 	display: flex;
 	flex-direction: column;
 	gap: 40rpx;
@@ -672,5 +706,46 @@ export default {
 .empty__tip {
 	font-size: 26rpx;
 	color: rgba(255,255,255,0.6);
+}
+
+.bottom-bar {
+	position: fixed;
+	left: 40rpx;
+	right: 40rpx;
+	bottom: 40rpx;
+	height: 120rpx;
+	border-radius: 60rpx;
+	display: flex;
+	align-items: center;
+	justify-content: space-around;
+	z-index: 3;
+	padding: 0 32rpx;
+	transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.bottom-bar__item {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 10rpx;
+	font-size: 24rpx;
+	color: rgba(255,255,255,0.62);
+	flex: 1;
+	padding: 10rpx 0;
+	transition: transform 0.25s ease, color 0.25s ease;
+}
+
+.bottom-bar__item--active {
+	color: #ffffff;
+	font-weight: 600;
+	transform: translateY(-6rpx);
+}
+
+.bottom-bar__icon {
+	font-size: 32rpx;
+}
+
+.bottom-bar__label {
+	font-size: 24rpx;
 }
 </style>
