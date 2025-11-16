@@ -45,8 +45,8 @@
 						<text class="level-progress__label">习惯大师 Lv.{{ currentLevel }}</text>
 						<text class="level-progress__exp">{{ currentExp }}/{{ nextLevelExp }} 经验</text>
 					</view>
-					<view class="level-progress__bar">
-						<view class="level-progress__fill" :style="{ width: levelProgress }"></view>
+					<view class="level-progress__bar" :prop="levelProgress" :change:prop="renderjs.updateLevelProgress">
+						<view class="level-progress__fill" id="levelProgressFill"></view>
 					</view>
 				</view>
 			</view>
@@ -57,7 +57,7 @@
 					<text class="card-title">本周打卡</text>
 					<text class="card-sub">{{ weekCheckinCount }} 次完成</text>
 				</view>
-				<view class="heatmap-grid">
+				<view class="heatmap-grid" :prop="weekDays" :change:prop="renderjs.updateHeatmap">
 					<view 
 						class="heatmap-cell" 
 						v-for="(day, index) in weekDays" 
@@ -66,7 +66,7 @@
 					>
 						<text class="heatmap-cell__label">{{ day.label }}</text>
 						<view class="heatmap-cell__bar">
-							<view class="heatmap-cell__fill" :style="{ height: day.height }"></view>
+							<view class="heatmap-cell__fill" :data-index="index"></view>
 						</view>
 						<text class="heatmap-cell__count">{{ day.count }}</text>
 					</view>
@@ -299,6 +299,7 @@ export default {
 			hideBottomBar: false,
 			scrollTop: 0,
 			lastScrollTop: 0,
+			scrollTimer: null, // 滚动节流定时器
 			showDebugPanel: false,
 			mockDate: null,
 			debugDateInput: '',
@@ -459,24 +460,40 @@ onLoad() {
 onPageScroll(e) {
 	if (!e) return;
 	
-	const currentScrollTop = e.scrollTop || 0;
-	const delta = currentScrollTop - this.lastScrollTop;
-	
-	if (Math.abs(delta) < 1) {
+	// 节流处理，减少频繁更新
+	if (this.scrollTimer) {
 		return;
 	}
 	
-	// 向下滚动超过150时隐藏FAB
-	if (currentScrollTop > 150 && delta > 0) {
-		this.hideFab = true;
-	} 
-	// 向上滚动或滚动位置小于100时显示FAB
-	else if (delta < 0 || currentScrollTop < 100) {
-		this.hideFab = false;
-	}
-	
-	this.lastScrollTop = currentScrollTop;
+	this.scrollTimer = setTimeout(() => {
+		const currentScrollTop = e.scrollTop || 0;
+		const delta = currentScrollTop - this.lastScrollTop;
+		
+		if (Math.abs(delta) < 1) {
+			this.scrollTimer = null;
+			return;
+		}
+		
+		// 向下滚动超过150时隐藏FAB
+		if (currentScrollTop > 150 && delta > 0) {
+			this.hideFab = true;
+		} 
+		// 向上滚动或滚动位置小于100时显示FAB
+		else if (delta < 0 || currentScrollTop < 100) {
+			this.hideFab = false;
+		}
+		
+		this.lastScrollTop = currentScrollTop;
+		this.scrollTimer = null;
+	}, 16); // 约 60fps，16ms 一帧
 },
+	onUnload() {
+		// 清理滚动定时器
+		if (this.scrollTimer) {
+			clearTimeout(this.scrollTimer);
+			this.scrollTimer = null;
+		}
+	},
 	methods: {
 		getDifficultyLabel(difficulty) {
 			const labels = { easy: '简单', medium: '中等', hard: '困难' };
@@ -776,7 +793,37 @@ onPageScroll(e) {
 			uni.switchTab({ url: item.target });
 		}
 	},
-}
+	}
+};
+</script>
+
+<script module="renderjs" lang="renderjs">
+export default {
+	methods: {
+		updateLevelProgress(newValue, oldValue, ownerInstance, instance) {
+			const fill = ownerInstance.$el.querySelector('#levelProgressFill');
+			if (fill && newValue) {
+				requestAnimationFrame(() => {
+					// 使用 transform 替代 width 变化，性能更好
+					const percentNum = parseFloat(newValue) || 0;
+					fill.style.width = '100%';
+					fill.style.transform = `scaleX(${percentNum / 100})`;
+					fill.style.transformOrigin = 'left';
+				});
+			}
+		},
+		updateHeatmap(newValue, oldValue, ownerInstance, instance) {
+			if (!newValue || !Array.isArray(newValue)) return;
+			requestAnimationFrame(() => {
+				newValue.forEach((day, index) => {
+					const fill = ownerInstance.$el.querySelector(`[data-index="${index}"]`);
+					if (fill && day.height) {
+						fill.style.height = day.height;
+					}
+				});
+			});
+		}
+	}
 };
 </script>
 
@@ -1002,10 +1049,12 @@ onPageScroll(e) {
 }
 
 .level-progress__fill {
+	width: 100%;
 	height: 100%;
 	background: linear-gradient(90deg, #ffd700, #ffed4e);
 	border-radius: 999rpx;
-	transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+	transform-origin: left;
+	transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* 热力图 */

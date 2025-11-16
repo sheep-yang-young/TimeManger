@@ -26,7 +26,7 @@
 					<text v-for="day in weekdays" :key="day" class="calendar__weekday">{{ day }}</text>
 				</view>
 
-				<view class="calendar__dates">
+				<view class="calendar__dates" :prop="calendarDates" :change:prop="renderjs.updateCalendar">
 					<view 
 						v-for="(date, index) in calendarDates" 
 						:key="index"
@@ -38,9 +38,10 @@
 							'calendar__date--has-tasks': date.hasTasks
 						}"
 						@tap="selectDate(date)"
+						:data-index="index"
 					>
 						<text class="calendar__date-text">{{ date.day }}</text>
-						<view v-if="date.hasTasks" class="calendar__date-dot"></view>
+						<view v-show="date.hasTasks" class="calendar__date-dot"></view>
 					</view>
 				</view>
 			</view>
@@ -186,6 +187,7 @@ export default {
 			weekdays: ['日', '一', '二', '三', '四', '五', '六'],
 			allTasks: {},
 			_isInitialized: false,  // 标记是否已初始化
+			scrollTimer: null, // 滚动节流定时器
 			bottomNavItems: [
 				{ key: 'today', label: '今日', icon: '◎', target: '/pages/index/index' },
 				{ key: 'calendar', label: '日历', icon: '◉', target: '/pages/calendar/index' },
@@ -223,6 +225,24 @@ export default {
 		this.activeNav = 'calendar';
 		// 只刷新任务数据，不重新初始化
 		this.loadAllTasks();
+	},
+	onPageScroll(e) {
+		// 节流处理，减少频繁更新
+		if (!e) return;
+		if (this.scrollTimer) {
+			return;
+		}
+		this.scrollTimer = setTimeout(() => {
+			// 日历页滚动时不更新数据，只做必要的UI更新
+			this.scrollTimer = null;
+		}, 16);
+	},
+	onUnload() {
+		// 清理滚动定时器
+		if (this.scrollTimer) {
+			clearTimeout(this.scrollTimer);
+			this.scrollTimer = null;
+		}
 	},
 	methods: {
 		goBack() {
@@ -403,6 +423,30 @@ export default {
 			} catch (err) {
 				console.error('加载任务历史失败:', err);
 			}
+		}
+	}
+};
+</script>
+
+<script module="renderjs" lang="renderjs">
+export default {
+	methods: {
+		updateCalendar(newValue, oldValue, ownerInstance, instance) {
+			// 使用 renderjs 优化日历渲染，减少重排
+			if (!newValue || !Array.isArray(newValue)) return;
+			requestAnimationFrame(() => {
+				// 批量更新 DOM，减少重排
+				newValue.forEach((date, index) => {
+					const dateEl = ownerInstance.$el.querySelector(`[data-index="${index}"]`);
+					if (dateEl) {
+						// 优化类名更新
+						dateEl.classList.toggle('calendar__date--disabled', !date.current);
+						dateEl.classList.toggle('calendar__date--today', date.isToday);
+						dateEl.classList.toggle('calendar__date--selected', date.selected);
+						dateEl.classList.toggle('calendar__date--has-tasks', date.hasTasks);
+					}
+				});
+			});
 		}
 	}
 };

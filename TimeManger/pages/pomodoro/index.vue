@@ -2,7 +2,7 @@
 	<view class="page">
 		<view class="page__frost"></view>
 
-		<view class="top-bar glass" :class="{ 'glass--active': pageLoaded }">
+		<view class="top-bar glass" :class="pageLoaded && 'glass--active'">
 			<view class="top-bar__left" @tap="goBackToToday">
 				<text class="top-bar__back">◀</text>
 			</view>
@@ -16,20 +16,20 @@
 		</view>
 
 		<scroll-view class="main" scroll-y>
-			<view class="timer glass" :class="{ 'glass--active': pageLoaded }">
+			<view class="timer glass" :class="pageLoaded && 'glass--active'">
 
 				<view class="timer__display">
-					<view class="timer__ring">
-						<view class="timer__ring-progress" :style="{ width: progressPercent, backgroundImage: currentMode.gradient }"></view>
+					<view class="timer__ring" :prop="progressData" :change:prop="renderjs.updateProgress">
+						<view class="timer__ring-progress" id="progressBar"></view>
 					</view>
 					<text class="timer__time">{{ formattedTime }}</text>
 					<text class="timer__hint">目标 {{ targetTomatoes }} 颗 · {{ planProgressLabel }} · {{ currentMode.label }}</text>
-					<text class="timer__state" :class="{ 'timer__state--break': currentModeKey === 'break' }">{{ currentStateLabel }}</text>
+					<text class="timer__state" :class="currentModeKey === 'break' && 'timer__state--break'">{{ currentStateLabel }}</text>
 				</view>
 
 				<view class="timer__controls">
 					<button class="timer__button timer__button--primary" type="primary" @tap="toggleTimer">
-						{{ timerRunning ? '暂停' : '开始' }}
+						{{ buttonText }}
 					</button>
 					<button class="timer__button" @tap="resetTimer" :disabled="timerState === 'idle'">重置</button>
 				</view>
@@ -38,7 +38,7 @@
 					<text class="timer__status">{{ statusText }}</text>
 					<button
 						class="timer__button timer__button--ghost"
-						:class="{ 'timer__button--pressing': finishButtonPressing }"
+						:class="finishButtonPressing && 'timer__button--pressing'"
 						:disabled="!canFinishPlan"
 						@touchstart="onFinishButtonTouchStart"
 						@touchend="onFinishButtonTouchEnd"
@@ -49,7 +49,7 @@
 				</view>
 			</view>
 
-			<view class="settings glass" :class="{ 'glass--active': pageLoaded }" v-show="!settingsLocked">
+			<view class="settings glass" :class="pageLoaded && 'glass--active'" v-show="!settingsLocked">
 				<view class="settings__header">
 					<text class="settings__title">自定义番茄节奏</text>
 					<text class="settings__subtitle">设定专注与休息时长，打造自己的节奏</text>
@@ -107,7 +107,7 @@
 				</view>
 			</view>
 
-			<view class="insights glass" :class="{ 'glass--active': pageLoaded }">
+			<view class="insights glass" :class="pageLoaded && 'glass--active'">
 				<view class="insights__header">
 					<text class="insights__title">专注小贴士</text>
 					<text class="insights__subtitle">掌握节奏，保持高效</text>
@@ -131,12 +131,12 @@
 			</view>
 		</view>
 
-		<view class="bottom-bar glass" :class="{ 'glass--active': pageLoaded }">
+		<view class="bottom-bar glass" :class="pageLoaded && 'glass--active'">
 			<view
 				class="bottom-bar__item"
 				v-for="item in bottomNavItems"
 				:key="item.key"
-				:class="{ 'bottom-bar__item--active': activeNav === item.key }"
+				:class="activeNav === item.key && 'bottom-bar__item--active'"
 				@tap="onBottomNavTap(item)"
 			>
 				<text class="bottom-bar__icon">{{ item.icon }}</text>
@@ -144,7 +144,7 @@
 			</view>
 		</view>
 
-		<view v-if="testPanelVisible" class="tester-panel glass glass--active" @tap.stop>
+		<view v-show="testPanelVisible" class="tester-panel glass glass--active" @tap.stop>
 			<view class="tester-panel__header">
 				<text class="tester-panel__title">调试工具</text>
 				<text class="tester-panel__close" @tap="hideTesterPanel">✕</text>
@@ -157,8 +157,8 @@
 			</view>
 		</view>
 
-		<view class="report-mask" v-if="reportVisible" @tap="closeReport">
-			<view class="report glass glass--active" @tap.stop>
+		<view class="report-mask" v-show="reportVisible" @tap="closeReport">
+			<view class="report glass glass--active" v-show="reportVisible" @tap.stop>
 				<view class="report__header">
 					<text class="report__title">专注完成</text>
 					<text class="report__subtitle">刚刚的专注表现一览</text>
@@ -255,15 +255,9 @@ export default {
 		},
 		formattedTime() {
 			const total = Math.max(0, this.elapsedSeconds);
-			const hours = Math.floor(total / 3600)
-				.toString()
-				.padStart(2, '0');
-			const minutes = Math.floor((total % 3600) / 60)
-				.toString()
-				.padStart(2, '0');
-			const seconds = Math.floor(total % 60)
-				.toString()
-				.padStart(2, '0');
+			const hours = String(Math.floor(total / 3600)).padStart(2, '0');
+			const minutes = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
+			const seconds = String(Math.floor(total % 60)).padStart(2, '0');
 			return `${hours}:${minutes}:${seconds}`;
 		},
 		currentDurationSeconds() {
@@ -278,55 +272,55 @@ export default {
 			const ratio = Math.min(this.elapsedSeconds / total, 1);
 			return `${Math.round(ratio * 100)}%`;
 		},
+		progressData() {
+			return {
+				percent: this.progressPercent,
+				gradient: this.currentMode.gradient
+			};
+		},
 		statusText() {
-			if (this.currentModeKey === 'focus') {
-				if (this.timerState === 'running') {
-					return '专注进行中，保持节奏';
+			const statusMap = {
+				focus: {
+					running: '专注进行中，保持节奏',
+					paused: '专注暂停，可随时继续',
+					idle: '准备开始下一颗番茄'
+				},
+				break: {
+					running: '休息中，放松一下',
+					paused: '休息暂停，可随时继续',
+					idle: '准备开始休息时间'
 				}
-				if (this.timerState === 'paused') {
-					return '专注暂停，可随时继续';
-				}
-				return '准备开始下一颗番茄';
-			}
-			if (this.timerState === 'running') {
-				return '休息中，放松一下';
-			}
-			if (this.timerState === 'paused') {
-				return '休息暂停，可随时继续';
-			}
-			return '准备开始休息时间';
+			};
+			return statusMap[this.currentModeKey]?.[this.timerState] || statusMap.focus.idle;
 		},
 		currentStateLabel() {
-			if (this.currentModeKey === 'focus') {
-				if (this.timerState === 'running') {
-					return '当前状态：专注进行中';
+			const stateMap = {
+				focus: {
+					running: '当前状态：专注进行中',
+					paused: '当前状态：专注已暂停',
+					idle: '当前状态：准备开始专注'
+				},
+				break: {
+					running: '当前状态：休息恢复中',
+					paused: '当前状态：休息已暂停',
+					idle: '当前状态：准备开始休息'
 				}
-				if (this.timerState === 'paused') {
-					return '当前状态：专注已暂停';
-				}
-				return '当前状态：准备开始专注';
-			}
-			if (this.timerState === 'running') {
-				return '当前状态：休息恢复中';
-			}
-			if (this.timerState === 'paused') {
-				return '当前状态：休息已暂停';
-			}
-			return '当前状态：准备开始休息';
+			};
+			return stateMap[this.currentModeKey]?.[this.timerState] || stateMap.focus.idle;
 		},
 		planProgressLabel() {
 			const target = Math.max(1, this.targetTomatoes || 1);
 			const completed = Math.min(this.planEarnedTomatoes, target);
 			return `已完成 ${completed}/${target} 颗`;
 		},
+		buttonText() {
+			return this.timerRunning ? '暂停' : '开始';
+		},
 		settingsLocked() {
 			return this.planActive || this.timerState !== 'idle';
 		},
 		canFinishPlan() {
-			if (this.planActive) {
-				return true;
-			}
-			return this.planEarnedTomatoes > 0 || this.elapsedSeconds > 0;
+			return this.planActive || this.planEarnedTomatoes > 0 || this.elapsedSeconds > 0;
 		}
 	},
 	onLoad() {
@@ -371,9 +365,6 @@ export default {
 			}
 		},
 		hideTesterPanel() {
-			if (!this.testPanelVisible) {
-				return;
-			}
 			this.testPanelVisible = false;
 		},
 		triggerTesterAction(action) {
@@ -821,6 +812,28 @@ export default {
 };
 </script>
 
+<script module="renderjs" lang="renderjs">
+export default {
+	methods: {
+		updateProgress(newValue, oldValue, ownerInstance, instance) {
+			const progressBar = ownerInstance.$el.querySelector('#progressBar');
+			if (progressBar && newValue) {
+				const { percent, gradient } = newValue;
+				// 使用 requestAnimationFrame 优化动画性能
+				requestAnimationFrame(() => {
+					// 使用 transform 替代 width 变化，性能更好
+					const percentNum = parseFloat(percent) || 0;
+					progressBar.style.width = '100%';
+					progressBar.style.backgroundImage = gradient;
+					progressBar.style.transform = `scaleX(${percentNum / 100})`;
+					progressBar.style.transformOrigin = 'left';
+				});
+			}
+		}
+	}
+};
+</script>
+
 <style scoped>
 .page {
 	position: relative;
@@ -954,9 +967,11 @@ export default {
 	position: absolute;
 	left: 0;
 	top: 0;
+	width: 100%;
 	height: 100%;
 	border-radius: 12rpx;
-	transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+	transform-origin: left;
+	transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .timer__time {

@@ -5,9 +5,9 @@
 		<view class="top-bar glass" :class="{ 'glass--active': pageLoaded }">
 			<view class="top-bar__left" @tap="toggleSideMenu">
 				<view class="icon-more">
-					<view></view>
-					<view></view>
-					<view></view>
+					<text class="icon-more__line"></text>
+					<text class="icon-more__line"></text>
+					<text class="icon-more__line"></text>
 				</view>
 			</view>
 			<text class="top-bar__title">今日</text>
@@ -27,10 +27,10 @@
 				</view>
 			</view>
 		</view>
-		<view class="side-menu__mask" v-if="showSideMenu" @tap="toggleSideMenu"></view>
+		<view class="side-menu__mask" v-show="showSideMenu" @tap="toggleSideMenu"></view>
 
 		<view class="main">
-		<view class="efficiency glass" :class="{ 'glass--active': pageLoaded }">
+			<view class="efficiency glass" :class="{ 'glass--active': pageLoaded }">
 				<view class="card-header">
 					<text class="card-title">效率概览</text>
 				</view>
@@ -42,8 +42,8 @@
 							<text class="stat-card__value">{{ card.value }}</text>
 						</view>
 						<text class="stat-card__desc">{{ card.desc }}</text>
-						<view class="stat-card__bar">
-							<view class="stat-card__bar-fill" :style="{ width: card.progress, backgroundImage: card.gradient }"></view>
+						<view class="stat-card__bar" :prop="card" :change:prop="renderjs.updateBar">
+							<view class="stat-card__bar-fill" :data-id="card.key"></view>
 						</view>
 						<text class="stat-card__extra">{{ card.extra }}</text>
 						<view class="stat-card__footer">
@@ -58,19 +58,21 @@
 					<text class="card-title">今日清单</text>
 					<text class="card-sub">{{ summaryLabel }}</text>
 				</view>
-				<view v-for="task in tasks" :key="task.id" class="task" :class="{ 'task--done': task.done, 'task--expired': task.expired }">
-					<view class="task__info" @tap="toggleTaskDone(task)">
-						<text class="task__title" :class="{ 'task__title--strikethrough': task.done }">{{ task.title }}</text>
-						<text class="task__deadline" :class="{ 'task__deadline--strikethrough': task.done }">{{ task.deadline }}</text>
+				<template v-if="tasks.length">
+					<view v-for="task in tasks" :key="task.id" class="task" :class="[task.done && 'task--done', task.expired && 'task--expired']">
+						<view class="task__info" @tap="toggleTaskDone(task)">
+							<text class="task__title" :class="task.done && 'task__title--strikethrough'">{{ task.title }}</text>
+							<text class="task__deadline" :class="task.done && 'task__deadline--strikethrough'">{{ task.deadline }}</text>
+						</view>
+						<view class="task__actions">
+							<text class="task__action-btn task__action-btn--edit" @tap.stop="editTask(task)">✎</text>
+							<text class="task__action-btn task__action-btn--delete" @tap.stop="deleteTask(task)">×</text>
+						</view>
 					</view>
-					<view class="task__actions">
-						<text class="task__action-btn task__action-btn--edit" @tap.stop="editTask(task)">✎</text>
-						<text class="task__action-btn task__action-btn--delete" @tap.stop="deleteTask(task)">×</text>
-					</view>
+				</template>
+				<view v-else class="empty">
+					<text class="empty__tip">还没有任务，点击右下角添加吧＞﹏＜</text>
 				</view>
-			<view v-if="!tasks.length" class="empty">
-				<text class="empty__tip">还没有任务，点击右下角添加吧＞﹏＜</text>
-			</view>
 		</view>
 		
 		<!-- 页面底部装饰 -->
@@ -101,8 +103,8 @@
 			<text class="fab__icon">+</text>
 		</view>
 
-	<view class="sheet-mask" v-if="showAddSheet" @tap="closeAddSheet"></view>
-	<view class="sheet glass" :class="{ 'sheet--open': showAddSheet }" @touchmove.stop.prevent>
+	<view class="sheet-mask" v-show="showAddSheet" @tap="closeAddSheet"></view>
+	<view class="sheet glass" :class="{ 'sheet--open': showAddSheet }" v-show="showAddSheet" @touchmove.stop.prevent>
 		<view class="sheet__handle"></view>
 		<view class="sheet__header">
 			<text class="sheet__title">添加今日任务</text>
@@ -133,15 +135,15 @@
 					</view>
 				</picker>
 			</view>
-			<view v-if="form.deadline" class="form-deadline-display">
+			<view v-show="form.deadline" class="form-deadline-display">
 				<text class="form-deadline-display__text">截止时间：{{ form.deadline }}</text>
 			</view>
 		</view>
 		<button class="sheet__action" type="primary" :disabled="!canSubmit" @tap.stop="confirmTask">添加任务</button>
 		</view>
 
-	<view class="sheet-mask" v-if="showEditSheet" @tap="closeEditSheet"></view>
-	<view class="sheet glass" :class="{ 'sheet--open': showEditSheet }" @touchmove.stop.prevent>
+	<view class="sheet-mask" v-show="showEditSheet" @tap="closeEditSheet"></view>
+	<view class="sheet glass" :class="{ 'sheet--open': showEditSheet }" v-show="showEditSheet" @touchmove.stop.prevent>
 		<view class="sheet__handle"></view>
 		<view class="sheet__header">
 			<text class="sheet__title">编辑任务</text>
@@ -159,20 +161,16 @@
 				<view class="deadline-option-item" :class="{ 'deadline-option-item--active': form.deadline === '' }" @tap="selectNoDeadline">
 					<text class="deadline-option-item__text">不指定时间</text>
 				</view>
-				<picker mode="date" :value="form.date" :start="minDate" @change="onDateChange">
-					<view class="form-value form-value--picker">
-						<text>{{ form.date || '选择日期' }}</text>
-						<text class="form-arrow">></text>
-					</view>
+				<picker mode="date" :value="form.date" :start="minDate" @change="onDateChange" class="form-value form-value--picker">
+					<text>{{ form.date || '选择日期' }}</text>
+					<text class="form-arrow">></text>
 				</picker>
-				<picker mode="time" :value="form.time" @change="onTimeChange">
-					<view class="form-value form-value--picker">
-						<text>{{ form.time || '选择时间' }}</text>
-						<text class="form-arrow">></text>
-					</view>
+				<picker mode="time" :value="form.time" @change="onTimeChange" class="form-value form-value--picker">
+					<text>{{ form.time || '选择时间' }}</text>
+					<text class="form-arrow">></text>
 				</picker>
 			</view>
-			<view v-if="form.deadline" class="form-deadline-display">
+			<view v-show="form.deadline" class="form-deadline-display">
 				<text class="form-deadline-display__text">截止时间：{{ form.deadline }}</text>
 			</view>
 		</view>
@@ -195,6 +193,7 @@ export default {
 			hideBottomBar: false,
 			scrollTop: 0,
 			lastScrollTop: 0,
+			scrollTimer: null, // 滚动节流定时器
 			dailyStats: {
 				completed: 5,
 				active: 9,
@@ -235,26 +234,45 @@ export default {
 			return this.safeRatio(this.dailyStats.expired, this.dailyStats.expiredGoal);
 		},
 		statGradients() {
-			return {
-				completion: this.buildGradientCSS(['#ff5a5f', '#ff9f1f']),
-				pomodoro: this.buildGradientCSS(['#4db2ff', '#2962ff']),
-				overdue: this.buildGradientCSS(['#7d61ff', '#c39eff']),
-				focus: this.buildGradientCSS(['#5affd0', '#39acff'])
-			};
+			// 缓存渐变样式，避免每次重新计算
+			if (!this._statGradientsCache) {
+				this._statGradientsCache = {
+					completion: this.buildGradientCSS(['#ff5a5f', '#ff9f1f']),
+					pomodoro: this.buildGradientCSS(['#4db2ff', '#2962ff']),
+					overdue: this.buildGradientCSS(['#7d61ff', '#c39eff']),
+					focus: this.buildGradientCSS(['#5affd0', '#39acff'])
+				};
+			}
+			return this._statGradientsCache;
 		},
 		statCards() {
+			// 使用缓存机制，只有当依赖数据真正变化时才重新计算
+			const statsKey = `${this.dailyStats.completed}-${this.dailyStats.active}-${this.dailyStats.pomodoro}-${this.dailyStats.pomodoroGoal}-${this.dailyStats.expired}-${this.dailyStats.expiredGoal}`;
+			
+			// 如果数据没变化，返回缓存的数组
+			if (this._statCardsCache && this._statCardsCacheKey === statsKey) {
+				return this._statCardsCache;
+			}
+			
 			const clamp = value => Math.max(0, Math.min(1, value || 0));
-			const completionPercent = `${Math.round(clamp(this.completionRatio) * 100)}%`;
-			const pomodoroPercent = `${Math.round(clamp(this.pomodoroRatio) * 100)}%`;
-			const controlRatio = clamp(1 - this.expiredRatio);
+			const completionRatio = this.completionRatio;
+			const pomodoroRatio = this.pomodoroRatio;
+			const expiredRatio = this.expiredRatio;
+			
+			const completionPercent = `${Math.round(clamp(completionRatio) * 100)}%`;
+			const pomodoroPercent = `${Math.round(clamp(pomodoroRatio) * 100)}%`;
+			const controlRatio = clamp(1 - expiredRatio);
 			const controlPercent = `${Math.round(controlRatio * 100)}%`;
-			const completionStatus = this.describeStatus(clamp(this.completionRatio));
-			const pomodoroStatus = this.describeStatus(clamp(this.pomodoroRatio));
+			
+			const completionStatus = this.describeStatus(clamp(completionRatio));
+			const pomodoroStatus = this.describeStatus(clamp(pomodoroRatio));
 			const overdueStatus = this.describeStatus(controlRatio);
-			const focusRatio = clamp((clamp(this.completionRatio) + clamp(this.pomodoroRatio) + controlRatio) / 3);
+			const focusRatio = clamp((clamp(completionRatio) + clamp(pomodoroRatio) + controlRatio) / 3);
 			const focusPercent = `${Math.round(focusRatio * 100)}%`;
 			const focusStatus = this.describeStatus(focusRatio);
-			const statusLabels = {
+			
+			// 静态标签对象，提取到外部避免每次创建
+			const STATUS_LABELS = {
 				completion: {
 					good: '状态良好',
 					warn: '保持节奏',
@@ -276,7 +294,8 @@ export default {
 					alert: '抓紧调整状态'
 				}
 			};
-			return [
+			
+			const cards = [
 				{
 					key: 'completion',
 					label: '任务完成度',
@@ -286,7 +305,7 @@ export default {
 					progress: completionPercent,
 					gradient: this.statGradients.completion,
 					status: completionStatus,
-					statusLabel: statusLabels.completion[completionStatus]
+					statusLabel: STATUS_LABELS.completion[completionStatus]
 				},
 				{
 					key: 'pomodoro',
@@ -297,7 +316,7 @@ export default {
 					progress: pomodoroPercent,
 					gradient: this.statGradients.pomodoro,
 					status: pomodoroStatus,
-					statusLabel: statusLabels.pomodoro[pomodoroStatus]
+					statusLabel: STATUS_LABELS.pomodoro[pomodoroStatus]
 				},
 				{
 					key: 'overdue',
@@ -308,7 +327,7 @@ export default {
 					progress: controlPercent,
 					gradient: this.statGradients.overdue,
 					status: overdueStatus,
-					statusLabel: statusLabels.overdue[overdueStatus]
+					statusLabel: STATUS_LABELS.overdue[overdueStatus]
 				},
 				{
 					key: 'focus',
@@ -319,9 +338,15 @@ export default {
 					progress: focusPercent,
 					gradient: this.statGradients.focus,
 					status: focusStatus,
-					statusLabel: statusLabels.focus[focusStatus]
+					statusLabel: STATUS_LABELS.focus[focusStatus]
 				}
 			];
+			
+			// 缓存结果
+			this._statCardsCache = cards;
+			this._statCardsCacheKey = statsKey;
+			
+			return cards;
 		},
 		summaryLabel() {
 			return `${this.dailyStats.completed} / ${this.dailyStats.active} 已完成`;
@@ -396,29 +421,43 @@ onLoad() {
 onPageScroll(e) {
 	if (!e) return;
 	
-	const currentScrollTop = e.scrollTop || 0;
-	const delta = currentScrollTop - this.lastScrollTop;
-	
-	if (Math.abs(delta) < 1) {
+	// 节流处理，减少频繁更新
+	if (this.scrollTimer) {
 		return;
 	}
 	
-	// 向下滚动超过150时隐藏FAB
-	if (currentScrollTop > 150 && delta > 0) {
-		this.hideFab = true;
-	} 
-	// 向上滚动或滚动位置小于100时显示FAB
-	else if (delta < 0 || currentScrollTop < 100) {
-		this.hideFab = false;
-	}
-	
-	this.lastScrollTop = currentScrollTop;
+	this.scrollTimer = setTimeout(() => {
+		const currentScrollTop = e.scrollTop || 0;
+		const delta = currentScrollTop - this.lastScrollTop;
+		
+		if (Math.abs(delta) < 1) {
+			this.scrollTimer = null;
+			return;
+		}
+		
+		// 向下滚动超过150时隐藏FAB
+		if (currentScrollTop > 150 && delta > 0) {
+			this.hideFab = true;
+		} 
+		// 向上滚动或滚动位置小于100时显示FAB
+		else if (delta < 0 || currentScrollTop < 100) {
+			this.hideFab = false;
+		}
+		
+		this.lastScrollTop = currentScrollTop;
+		this.scrollTimer = null;
+	}, 16); // 约 60fps，16ms 一帧
 },
 	onShow() {
 		this.syncPomodoroCount();
 	},
 	onUnload() {
 		this.unregisterPomodoroListener();
+		// 清理滚动定时器
+		if (this.scrollTimer) {
+			clearTimeout(this.scrollTimer);
+			this.scrollTimer = null;
+		}
 	},
 	methods: {
 		buildGradientCSS(colors) {
@@ -848,7 +887,29 @@ onPageScroll(e) {
 		const d = String(day).padStart(2, '0');
 		return `${year}-${m}-${d}`;
 	},
-}
+	}
+};
+</script>
+
+<script module="renderjs" lang="renderjs">
+export default {
+	methods: {
+		updateBar(newValue, oldValue, ownerInstance, instance) {
+			if (!newValue) return;
+			const { progress, gradient, key } = newValue;
+			const barFill = ownerInstance.$el.querySelector(`[data-id="${key}"]`);
+			if (barFill) {
+				requestAnimationFrame(() => {
+					// 使用 transform 替代 width 变化，性能更好
+					const percentNum = parseFloat(progress) || 0;
+					barFill.style.width = '100%';
+					barFill.style.backgroundImage = gradient;
+					barFill.style.transform = `scaleX(${percentNum / 100})`;
+					barFill.style.transformOrigin = 'left';
+				});
+			}
+		}
+	}
 };
 </script>
 
@@ -936,7 +997,8 @@ onPageScroll(e) {
 	padding: 10rpx 0;
 }
 
-.icon-more view {
+.icon-more__line {
+	display: block;
 	width: 42rpx;
 	height: 4rpx;
 	border-radius: 999rpx;
@@ -1117,10 +1179,12 @@ onPageScroll(e) {
 	position: absolute;
 	left: 0;
 	top: 0;
+	width: 100%;
 	height: 100%;
 	border-radius: 12rpx;
 	background-size: 140%;
-	transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+	transform-origin: left;
+	transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .stat-card__footer {
@@ -1525,12 +1589,15 @@ onPageScroll(e) {
 	justify-content: space-between;
 }
 
-.form-value--picker {
+picker.form-value--picker {
 	flex: 1;
 	margin-left: 16rpx;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
 }
 
-.form-value--picker:first-of-type {
+picker.form-value--picker:first-of-type {
 	margin-left: 0;
 }
 
