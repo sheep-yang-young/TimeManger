@@ -189,6 +189,10 @@ export default {
 			this.pageLoaded = true;
 		}, 80);
 	},
+	onShow() {
+		// Reload tasks when the page becomes visible
+		this.loadAllTasks();
+	},
 	methods: {
 		goBack() {
 			uni.switchTab({ url: '/pages/index/index' });
@@ -235,18 +239,27 @@ export default {
 				const tasksOnDate = this.allTasks[historyDateKey];
 				if (!Array.isArray(tasksOnDate)) continue;
 				
+				const historyDate = new Date(historyDateKey);
+				
 				for (const task of tasksOnDate) {
 					// Include task if:
 					// 1. Task has a targetDate matching this date
 					// 2. Task has no targetDate (no deadline) and was created on or before this date
+					// 3. Task has no targetDate and no createdDate, but was saved on or before this date (fallback)
 					
 					if (task.targetDate === dateKey) {
 						// Task has deadline for this specific date
 						result.push(task);
-					} else if (!task.targetDate && task.createdDate) {
-						// Task has no deadline, check if it was created on or before this date
-						const createdDate = new Date(task.createdDate);
-						if (createdDate <= targetDate) {
+					} else if (!task.targetDate) {
+						// Task has no specific target date
+						let effectiveCreatedDate = historyDate;
+						
+						if (task.createdDate) {
+							effectiveCreatedDate = new Date(task.createdDate);
+						}
+						
+						// Task should appear on all dates from creation onwards
+						if (effectiveCreatedDate <= targetDate) {
 							// Check if we already added this task (avoid duplicates)
 							if (!result.find(t => t.id === task.id)) {
 								result.push(task);

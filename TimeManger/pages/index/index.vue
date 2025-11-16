@@ -203,11 +203,7 @@ export default {
 				expired: 1,
 				expiredGoal: 4
 			},
-			tasks: [
-				{ id: 1, title: '整理会议纪要', deadline: '今天 18:30', done: false, expired: false },
-				{ id: 2, title: '晚间冥想 20 分钟', deadline: '今天 21:00', done: true, expired: false },
-				{ id: 3, title: '复盘项目进度', deadline: '明天 09:00', done: false, expired: false }
-			],
+			tasks: [],
 		form: {
 			title: '',
 			deadline: '',
