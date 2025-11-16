@@ -656,14 +656,14 @@ onPageScroll(e) {
 		return `${year}-${month}-${day}`;
 	},
 	extractTargetDateFromDeadline(deadlineText, dateValue) {
-		// If no deadline, return null (task applies to all days from creation)
-		if (!deadlineText || deadlineText === '无截止时间') {
-			return null;
-		}
-		
-		// If we have a date value from the picker, use it
+		// 优先使用日期选择器的值，即便展示文本还没生成
 		if (dateValue) {
 			return dateValue;
+		}
+		
+		// 如果仍然没有任何截止信息，则视为无具体日期
+		if (!deadlineText || deadlineText === '无截止时间') {
+			return null;
 		}
 		
 		// Parse deadline text to extract target date
@@ -696,12 +696,21 @@ onPageScroll(e) {
 	},
 	saveLocalData() {
 		try {
-			uni.setStorageSync('todayTasks', this.tasks);
+			const dateKey = this.buildTodayKey();
+			// Ensure every task carries basic metadata before persisting
+			this.tasks.forEach(task => {
+				if (!task.createdDate) {
+					task.createdDate = dateKey;
+				}
+				if (task.targetDate === undefined || task.targetDate === '') {
+					task.targetDate = this.extractTargetDateFromDeadline(task.deadline, null);
+				}
+			});
+			const serializedTasks = this.tasks.map(task => ({ ...task }));
+			uni.setStorageSync('todayTasks', serializedTasks);
 			uni.setStorageSync('todayStats', this.dailyStats);
 			
 			// Save tasks to history by date
-			const today = new Date();
-			const dateKey = this.buildTodayKey();
 			let taskHistory = {};
 			try {
 				const stored = uni.getStorageSync('taskHistory');
@@ -711,7 +720,7 @@ onPageScroll(e) {
 			} catch (err) {
 				console.warn('读取任务历史失败', err);
 			}
-			taskHistory[dateKey] = this.tasks;
+			taskHistory[dateKey] = serializedTasks.map(task => ({ ...task }));
 			uni.setStorageSync('taskHistory', taskHistory);
 		} catch (err) {
 			console.error('保存数据失败:', err);

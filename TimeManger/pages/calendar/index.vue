@@ -230,6 +230,71 @@ export default {
 			const d = String(day).padStart(2, '0');
 			return `${year}-${m}-${d}`;
 		},
+		normalizeTaskRecord(task, fallbackDateKey) {
+			if (!task || typeof task !== 'object') {
+				return null;
+			}
+			const normalized = { ...task };
+			if (!normalized.createdDate) {
+				normalized.createdDate = fallbackDateKey;
+			}
+			const needsTarget = !normalized.targetDate || typeof normalized.targetDate !== 'string';
+			if (needsTarget) {
+				normalized.targetDate = this.deriveTargetDateFromDeadline(normalized.deadline, fallbackDateKey);
+			}
+			if (!normalized.targetDate) {
+				normalized.targetDate = null;
+			}
+			return normalized;
+		},
+		normalizeTaskHistory(rawHistory) {
+			const normalized = {};
+			const hasOwn = Object.prototype.hasOwnProperty;
+			for (const key in rawHistory) {
+				if (!hasOwn.call(rawHistory, key)) {
+					continue;
+				}
+				const tasks = Array.isArray(rawHistory[key]) ? rawHistory[key] : [];
+				normalized[key] = tasks
+					.map(task => this.normalizeTaskRecord(task, key))
+					.filter(Boolean);
+			}
+			return normalized;
+		},
+		deriveTargetDateFromDeadline(deadlineText, referenceDateKey) {
+			if (!deadlineText || deadlineText === '无截止时间') {
+				return null;
+			}
+			const referenceDate = referenceDateKey ? new Date(referenceDateKey) : new Date();
+			referenceDate.setHours(0, 0, 0, 0);
+			const normalizedText = String(deadlineText).trim();
+			const isoMatch = normalizedText.match(/(\d{4})-(\d{2})-(\d{2})/);
+			if (isoMatch) {
+				return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+			}
+			const relativeOffsets = [
+				{ keyword: '今天', offset: 0 },
+				{ keyword: '明天', offset: 1 },
+				{ keyword: '后天', offset: 2 },
+				{ keyword: '昨天', offset: -1 }
+			];
+			for (const item of relativeOffsets) {
+				if (normalizedText.includes(item.keyword)) {
+					const date = new Date(referenceDate);
+					date.setDate(date.getDate() + item.offset);
+					return this.getDateKey(date.getFullYear(), date.getMonth(), date.getDate());
+				}
+			}
+			const monthDayMatch = normalizedText.match(/(\d{1,2})月(\d{1,2})日/);
+			if (monthDayMatch) {
+				const year = referenceDate.getFullYear();
+				const month = parseInt(monthDayMatch[1], 10) - 1;
+				const day = parseInt(monthDayMatch[2], 10);
+				const date = new Date(year, month, day);
+				return this.getDateKey(date.getFullYear(), date.getMonth(), date.getDate());
+			}
+			return null;
+		},
 		getTasksForDate(dateKey) {
 			const result = [];
 			const targetDate = new Date(dateKey);
@@ -279,14 +344,20 @@ export default {
 			try {
 				const stored = uni.getStorageSync('taskHistory');
 				if (stored && typeof stored === 'object') {
-					this.allTasks = stored;
+					const normalized = this.normalizeTaskHistory(stored);
+					this.allTasks = normalized;
+					uni.setStorageSync('taskHistory', normalized);
 				} else {
 					// Migrate today's tasks if they exist
 					const todayTasks = uni.getStorageSync('todayTasks');
 					if (todayTasks && Array.isArray(todayTasks)) {
 						const today = new Date();
 						const key = this.getDateKey(today.getFullYear(), today.getMonth(), today.getDate());
-						this.allTasks[key] = todayTasks;
+						const normalized = this.normalizeTaskHistory({ [key]: todayTasks });
+						this.allTasks = normalized;
+						uni.setStorageSync('taskHistory', normalized);
+					} else {
+						this.allTasks = {};
 					}
 				}
 			} catch (err) {
@@ -300,11 +371,15 @@ export default {
 <style scoped>
 .page {
 	position: relative;
-	min-height: 100vh;
+	min-height: calc(100vh + env(safe-area-inset-bottom));
+	min-height: calc(100vh + constant(safe-area-inset-bottom));
+	display: flex;
+	flex-direction: column;
 	background: linear-gradient(160deg, #0f1b2b 0%, #1b2d45 55%, #18323e 100%);
 	color: #f6f7fb;
 	overflow: hidden;
-	padding-bottom: 100rpx;
+	padding-bottom: calc(200rpx + env(safe-area-inset-bottom));
+	padding-bottom: calc(200rpx + constant(safe-area-inset-bottom));
 }
 
 .page__frost {
@@ -377,14 +452,30 @@ export default {
 .main {
 	position: relative;
 	padding: 0 40rpx;
-	padding-bottom: 100rpx;
+	padding-bottom: calc(240rpx + env(safe-area-inset-bottom));
+	padding-bottom: calc(240rpx + constant(safe-area-inset-bottom));
 	box-sizing: border-box;
 	z-index: 2;
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 40rpx;
+}
+
+.main::after {
+	content: '';
+	position: fixed;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	height: 200rpx;
+	background: linear-gradient(to top, rgba(15, 27, 43, 0.95) 0%, rgba(15, 27, 43, 0.6) 40%, transparent 100%);
+	pointer-events: none;
+	z-index: 1;
 }
 
 .calendar {
 	padding: 42rpx 32rpx;
-	margin-bottom: 40rpx;
 }
 
 .calendar__header {
@@ -495,7 +586,6 @@ export default {
 
 .tasks {
 	padding: 40rpx 32rpx 32rpx;
-	margin-bottom: 40rpx;
 }
 
 .card-header {
