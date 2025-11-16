@@ -97,8 +97,8 @@ export default {
 			if (!this.selectedDate) {
 				return [];
 			}
-			const dateKey = this.getDateKey(this.selectedDate.year, this.selectedDate.month, this.selectedDate.day);
-			return this.getTasksForDate(dateKey);
+			const key = this.getDateKey(this.selectedDate.year, this.selectedDate.month, this.selectedDate.day);
+			return this.allTasks[key] || [];
 		},
 		calendarDates() {
 			const dates = [];
@@ -128,7 +128,7 @@ export default {
 					current: false,
 					isToday: false,
 					selected: false,
-					hasTasks: this.hasTasksForDate(key)
+					hasTasks: !!this.allTasks[key]
 				});
 			}
 			
@@ -149,7 +149,7 @@ export default {
 					current: true,
 					isToday,
 					selected,
-					hasTasks: this.hasTasksForDate(key)
+					hasTasks: !!this.allTasks[key]
 				});
 			}
 			
@@ -166,7 +166,7 @@ export default {
 					current: false,
 					isToday: false,
 					selected: false,
-					hasTasks: this.hasTasksForDate(key)
+					hasTasks: !!this.allTasks[key]
 				});
 			}
 			
@@ -225,42 +225,6 @@ export default {
 			const m = String(month + 1).padStart(2, '0');
 			const d = String(day).padStart(2, '0');
 			return `${year}-${m}-${d}`;
-		},
-		getTasksForDate(dateKey) {
-			const result = [];
-			const targetDate = new Date(dateKey);
-			
-			// Iterate through all dates in taskHistory
-			for (const historyDateKey in this.allTasks) {
-				const tasksOnDate = this.allTasks[historyDateKey];
-				if (!Array.isArray(tasksOnDate)) continue;
-				
-				for (const task of tasksOnDate) {
-					// Include task if:
-					// 1. Task has a targetDate matching this date
-					// 2. Task has no targetDate (no deadline) and was created on or before this date
-					
-					if (task.targetDate === dateKey) {
-						// Task has deadline for this specific date
-						result.push(task);
-					} else if (!task.targetDate && task.createdDate) {
-						// Task has no deadline, check if it was created on or before this date
-						const createdDate = new Date(task.createdDate);
-						if (createdDate <= targetDate) {
-							// Check if we already added this task (avoid duplicates)
-							if (!result.find(t => t.id === task.id)) {
-								result.push(task);
-							}
-						}
-					}
-				}
-			}
-			
-			return result;
-		},
-		hasTasksForDate(dateKey) {
-			const tasks = this.getTasksForDate(dateKey);
-			return tasks.length > 0;
 		},
 		loadAllTasks() {
 			try {
