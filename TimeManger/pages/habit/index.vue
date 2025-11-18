@@ -1,7 +1,7 @@
 <template>
 	<view class="page">
 		<view class="top-bar glass" :class="{ 'glass--active': pageLoaded }">
-			<view class="top-bar__left">
+			<view class="top-bar__left" @tap="goBackToHome">
 				<text class="top-bar__back">◉</text>
 			</view>
 			<view class="top-bar__center">
@@ -778,12 +778,33 @@ onPageScroll(e) {
 		},
 	saveLocalData() {
 		try {
+			// 保存到旧存储（兼容性）
 			uni.setStorageSync('habits', this.habits);
 			uni.setStorageSync('habitEnergy', this.totalEnergy);
 			uni.setStorageSync('habitLevel', this.currentLevel);
 			uni.setStorageSync('habitExp', this.currentExp);
 			uni.setStorageSync('habitNextLevelExp', this.nextLevelExp);
 			uni.setStorageSync('lastCheckinDate', this.buildTodayKey());
+			
+			// 统一存储：同步到统一数据结构
+			try {
+				const allData = uni.getStorageSync('timeManager_appData') || {};
+				allData.habits = {
+					list: this.habits,
+					energy: this.totalEnergy,
+					level: this.currentLevel,
+					exp: this.currentExp,
+					nextLevelExp: this.nextLevelExp,
+					checkins: uni.getStorageSync('habitCheckins') || {},
+					lastCheckinDate: this.buildTodayKey(),
+					mockDate: uni.getStorageSync('habitMockDate') || null
+				};
+				allData._version = '1.0.0';
+				allData._lastUpdate = new Date().toISOString();
+				uni.setStorageSync('timeManager_appData', allData);
+			} catch (unifiedErr) {
+				console.warn('同步到统一存储失败:', unifiedErr);
+			}
 		} catch (err) {
 			console.error('保存习惯数据失败:', err);
 		}
@@ -972,6 +993,9 @@ onPageScroll(e) {
 		if (item.target) {
 			uni.switchTab({ url: item.target });
 		}
+	},
+	goBackToHome() {
+		uni.switchTab({ url: '/pages/index/index' });
 	},
 	}
 };

@@ -78,7 +78,7 @@
                     "certpath" : "c:\\Users\\Sheep_Young\\AppData\\Roaming\\HBuilder X\\extensions\\launcher\\agc-certs\\1762400485871.cer",
                     "keyAlias" : "debugKey",
                     "keyPassword" : "0000001A6D76478BF4C0AB6FEAFFCF9F63FAE25865969712C09695970E2A7A9CB2DB25DAB6B6DED144F3",
-                    "profile" : "c:\\Users\\Sheep_Young\\AppData\\Roaming\\HBuilder X\\extensions\\launcher\\agc-certs\\1763299179235.p7b",
+                    "profile" : "c:\\Users\\Sheep_Young\\AppData\\Roaming\\HBuilder X\\extensions\\launcher\\agc-certs\\1763471287286.p7b",
                     "signAlg" : "SHA256withECDSA",
                     "storeFile" : "c:\\Users\\Sheep_Young\\AppData\\Roaming\\HBuilder X\\extensions\\launcher\\agc-certs\\1762400485871.p12",
                     "storePassword" : "0000001A6D76478BF4C0AB6FEAFFCF9F63FAE25865969712C09695970E2A7A9CB2DB25DAB6B6DED144F3"

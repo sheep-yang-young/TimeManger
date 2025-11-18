@@ -232,17 +232,12 @@
 					<text class="sheet__close-icon">✕</text>
 				</view>
 			</view>
-			<view class="backup-actions">
-				<button class="backup-action-btn" @tap.stop="exportData">
-					<text class="backup-action-icon">📤</text>
-					<text class="backup-action-label">导出数据</text>
-					<text class="backup-action-desc">将数据导出为 JSON 文件</text>
-				</button>
-				<button class="backup-action-btn" @tap.stop="importData">
-					<text class="backup-action-icon">📥</text>
-					<text class="backup-action-label">导入数据</text>
-					<text class="backup-action-desc">从 JSON 文件恢复数据</text>
-				</button>
+			<view class="backup-content">
+				<view class="backup-placeholder">
+					<text class="backup-placeholder-icon">🚧</text>
+					<text class="backup-placeholder-text">功能正在开发中</text>
+					<text class="backup-placeholder-desc">敬请期待</text>
+				</view>
 			</view>
 		</view>
 
@@ -256,17 +251,14 @@
 					<text class="sheet__close-icon">✕</text>
 				</view>
 			</view>
-			<view class="feedback-actions">
-				<button class="feedback-action-btn" @tap.stop="exportLogs">
-					<text class="feedback-action-icon">📋</text>
-					<text class="feedback-action-label">导出错误日志</text>
-					<text class="feedback-action-desc">导出应用运行日志用于问题诊断</text>
-				</button>
-				<button class="feedback-action-btn" @tap.stop="sendFeedback">
-					<text class="feedback-action-icon">✉️</text>
-					<text class="feedback-action-label">发送反馈邮件</text>
-					<text class="feedback-action-desc">通过邮件发送您的建议和问题</text>
-				</button>
+			<view class="feedback-content">
+				<view class="feedback-email-section">
+					<text class="feedback-email-label">反馈邮箱：</text>
+					<view class="feedback-email-value" @tap.stop="copyEmail">
+						<text class="feedback-email-text">390403426@qq.com</text>
+						<text class="feedback-email-copy">📋</text>
+					</view>
+				</view>
 			</view>
 		</view>
 
@@ -336,7 +328,7 @@ export default {
 		sideMenuItems: [
 			{ label: '目标设置', tip: '设置效率指标目标', action: 'goals' },
 			{ label: '数据备份', tip: '导入或导出数据', action: 'backup' },
-			{ label: '反馈建议', tip: '导出日志、发送反馈', action: 'feedback' },
+			{ label: '反馈建议', tip: '发送反馈', action: 'feedback' },
 			{ label: '关于应用', tip: '版本信息与说明', action: 'about' }
 		],
 		bottomNavItems: [
@@ -611,6 +603,14 @@ onPageScroll(e) {
 					break;
 				case 'backup':
 					this.showBackupSheet = true;
+					// 显示"正在开发"提示
+					setTimeout(() => {
+						uni.showToast({
+							title: '功能正在开发中',
+							icon: 'none',
+							duration: 2000
+						});
+					}, 100);
 					break;
 				case 'feedback':
 					this.showFeedbackSheet = true;
@@ -926,400 +926,101 @@ onPageScroll(e) {
 			// 恢复原始值
 			this.loadGoals();
 		},
-		// 数据备份相关方法
-		exportData() {
-			try {
-				const data = {
-					tasks: uni.getStorageSync('todayTasks') || [],
-					taskHistory: uni.getStorageSync('taskHistory') || {},
-					stats: uni.getStorageSync('todayStats') || {},
-					pomodoroCounts: uni.getStorageSync('pomodoroCounts') || {},
-					pomodoroSettings: uni.getStorageSync('pomodoroSettings') || {},
-					habits: uni.getStorageSync('habits') || [],
-					habitCheckins: uni.getStorageSync('habitCheckins') || {},
-					goals: uni.getStorageSync('userGoals') || {},
-					exportTime: new Date().toISOString(),
-					version: '1.0.0'
-				};
-				
-				const dataStr = JSON.stringify(data, null, 2);
-				const fileName = `TimeManager_Backup_${new Date().toISOString().split('T')[0]}.json`;
-				
-				// #ifdef APP-PLUS || H5
-				// 在 App 和 H5 平台，使用文件系统 API
-				if (typeof plus !== 'undefined') {
-					// App 平台
-					const filePath = `_downloads/${fileName}`;
-					plus.io.resolveLocalFileSystemURL('_downloads', (entry) => {
-						entry.getFile(fileName, { create: true, exclusive: false }, (fileEntry) => {
-							fileEntry.createWriter((writer) => {
-								writer.write(dataStr);
-								writer.onwriteend = () => {
-									uni.showToast({
-										title: '数据已导出到下载目录',
-										icon: 'success'
-									});
-								};
-							});
-						});
-					}, () => {
-						// 目录不存在，创建它
-						plus.io.resolveLocalFileSystemURL('_www', (entry) => {
-							entry.getDirectory('_downloads', { create: true, exclusive: false }, () => {
-								this.exportData(); // 重试
-							});
-						});
-					});
-				} else {
-					// H5 平台，使用下载
-					const blob = new Blob([dataStr], { type: 'application/json' });
-					const url = URL.createObjectURL(blob);
-					const link = document.createElement('a');
-					link.href = url;
-					link.download = fileName;
-					link.click();
-					URL.revokeObjectURL(url);
-					uni.showToast({
-						title: '数据已导出',
-						icon: 'success'
-					});
-				}
-				// #endif
-				
-				// #ifdef APP-HARMONY
-				// HarmonyOS 平台使用文件系统管理器
-				try {
-					const fs = uni.getFileSystemManager();
-					const fileName = `TimeManager_Backup_${new Date().toISOString().split('T')[0]}.json`;
-					// 使用 uni.env.USER_DATA_PATH 或临时目录
-					const filePath = `${plus.io.convertLocalFileSystemURL('_www')}/../${fileName}`;
-					fs.writeFileSync(filePath, dataStr, 'utf8');
-					uni.showToast({
-						title: '数据已导出',
-						icon: 'success'
-					});
-				} catch (err) {
-					console.error('HarmonyOS 导出失败', err);
-					// 如果直接写入失败，尝试使用 uni.saveFile
-					uni.saveFile({
-						tempFilePath: dataStr,
-						success: () => {
-							uni.showToast({
-								title: '数据已导出',
-								icon: 'success'
-							});
-						},
-						fail: () => {
-							uni.showToast({
-								title: '导出失败，请检查权限',
-								icon: 'none'
-							});
-						}
-					});
-				}
-				// #endif
-				
-				this.closeBackupSheet();
-			} catch (err) {
-				console.error('导出数据失败', err);
-				uni.showToast({
-					title: '导出失败',
-					icon: 'none'
-				});
-			}
-		},
-		importData() {
-			// #ifdef APP-PLUS || H5
-			uni.chooseFile({
-				count: 1,
-				extension: ['.json'],
-				success: (res) => {
-					const filePath = res.tempFilePaths[0];
-					// 读取文件
-					uni.getFileSystemManager().readFile({
-						filePath: filePath,
-						encoding: 'utf8',
-						success: (readRes) => {
-							try {
-								const data = JSON.parse(readRes.data);
-								
-								// 验证数据格式
-								if (!data.version) {
-									throw new Error('无效的数据文件');
-								}
-								
-								uni.showModal({
-									title: '确认导入',
-									content: '导入数据将覆盖当前数据，是否继续？',
-									success: (modalRes) => {
-										if (modalRes.confirm) {
-											// 导入数据
-											if (data.tasks) uni.setStorageSync('todayTasks', data.tasks);
-											if (data.taskHistory) uni.setStorageSync('taskHistory', data.taskHistory);
-											if (data.stats) uni.setStorageSync('todayStats', data.stats);
-											if (data.pomodoroCounts) uni.setStorageSync('pomodoroCounts', data.pomodoroCounts);
-											if (data.pomodoroSettings) uni.setStorageSync('pomodoroSettings', data.pomodoroSettings);
-											if (data.habits) uni.setStorageSync('habits', data.habits);
-											if (data.habitCheckins) uni.setStorageSync('habitCheckins', data.habitCheckins);
-											if (data.goals) {
-												uni.setStorageSync('userGoals', data.goals);
-												this.loadGoals();
-											}
-											
-											// 重新加载页面数据
-											this.loadLocalData();
-											
-											uni.showToast({
-												title: '数据导入成功',
-												icon: 'success'
-											});
-											
-											this.closeBackupSheet();
-										}
-									}
-								});
-							} catch (err) {
-								console.error('解析数据失败', err);
-								uni.showToast({
-									title: '数据格式错误',
-									icon: 'none'
-								});
-							}
-						},
-						fail: (err) => {
-							console.error('读取文件失败', err);
-							uni.showToast({
-								title: '读取文件失败',
-								icon: 'none'
-							});
-						}
-					});
-				},
-				fail: (err) => {
-					console.error('选择文件失败', err);
-				}
-			});
-			// #endif
-			
-			// #ifdef APP-HARMONY
-			// HarmonyOS 平台使用文件选择
-			uni.chooseFile({
-				count: 1,
-				extension: ['.json'],
-				success: (res) => {
-					const filePath = res.tempFilePaths[0];
-					const fs = uni.getFileSystemManager();
-					try {
-						const dataStr = fs.readFileSync(filePath, 'utf8');
-						const data = JSON.parse(dataStr);
-						
-						if (!data.version) {
-							throw new Error('无效的数据文件');
-						}
-						
-						uni.showModal({
-							title: '确认导入',
-							content: '导入数据将覆盖当前数据，是否继续？',
-							success: (modalRes) => {
-								if (modalRes.confirm) {
-									// 导入数据
-									if (data.tasks) uni.setStorageSync('todayTasks', data.tasks);
-									if (data.taskHistory) uni.setStorageSync('taskHistory', data.taskHistory);
-									if (data.stats) uni.setStorageSync('todayStats', data.stats);
-									if (data.pomodoroCounts) uni.setStorageSync('pomodoroCounts', data.pomodoroCounts);
-									if (data.pomodoroSettings) uni.setStorageSync('pomodoroSettings', data.pomodoroSettings);
-									if (data.habits) uni.setStorageSync('habits', data.habits);
-									if (data.habitCheckins) uni.setStorageSync('habitCheckins', data.habitCheckins);
-									if (data.goals) {
-										uni.setStorageSync('userGoals', data.goals);
-										this.loadGoals();
-									}
-									
-									this.loadLocalData();
-									
-									uni.showToast({
-										title: '数据导入成功',
-										icon: 'success'
-									});
-									
-									this.closeBackupSheet();
-								}
-							}
-						});
-					} catch (err) {
-						console.error('导入数据失败', err);
-						uni.showToast({
-							title: '数据格式错误',
-							icon: 'none'
-						});
-					}
-				},
-				fail: (err) => {
-					console.error('选择文件失败', err);
-					uni.showToast({
-						title: '选择文件失败',
-						icon: 'none'
-					});
-				}
-			});
-			// #endif
-		},
+		// 数据备份相关方法（功能已移除，仅保留入口）
 		closeBackupSheet() {
 			this.showBackupSheet = false;
 		},
 		// 反馈相关方法
-		exportLogs() {
-			try {
-				// 收集错误日志（这里简化处理，实际应该从日志系统获取）
-				const logs = {
-					exportTime: new Date().toISOString(),
-					version: '1.0.0',
-					platform: 'HarmonyOS',
-					errors: [],
-					console: []
-				};
-				
-				const logsStr = JSON.stringify(logs, null, 2);
-				const fileName = `TimeManager_Logs_${new Date().toISOString().split('T')[0]}.json`;
-				
-				// #ifdef APP-PLUS || H5
-				if (typeof plus !== 'undefined') {
-					// App 平台导出
-					const filePath = `_downloads/${fileName}`;
-					plus.io.resolveLocalFileSystemURL('_downloads', (entry) => {
-						entry.getFile(fileName, { create: true, exclusive: false }, (fileEntry) => {
-							fileEntry.createWriter((writer) => {
-								writer.write(logsStr);
-								writer.onwriteend = () => {
-									uni.showToast({
-										title: '日志已导出到下载目录',
-										icon: 'success'
-									});
-								};
-							});
-						});
-					});
-				} else {
-					// H5 平台
-					const blob = new Blob([logsStr], { type: 'application/json' });
-					const url = URL.createObjectURL(blob);
-					const link = document.createElement('a');
-					link.href = url;
-					link.download = fileName;
-					link.click();
-					URL.revokeObjectURL(url);
-					uni.showToast({
-						title: '日志已导出',
-						icon: 'success'
-					});
-				}
-				// #endif
-				
-				// #ifdef APP-HARMONY
-				// HarmonyOS 平台日志导出
-				try {
-					const fs = uni.getFileSystemManager();
-					const fileName = `TimeManager_Logs_${new Date().toISOString().split('T')[0]}.json`;
-					
-					// 尝试多种路径方式
-					let filePath = null;
-					
-					// 方式1: 使用 uni.env.USER_DATA_PATH（如果可用）
-					if (typeof uni !== 'undefined' && uni.env && uni.env.USER_DATA_PATH) {
-						filePath = `${uni.env.USER_DATA_PATH}/${fileName}`;
-					}
-					// 方式2: 使用 plus.io 获取应用数据目录
-					else if (typeof plus !== 'undefined' && plus.io) {
-						try {
-							// 尝试获取应用数据目录
-							const dataDir = plus.io.convertLocalFileSystemURL('_doc');
-							filePath = `${dataDir}/${fileName}`;
-						} catch (e) {
-							// 如果 _doc 不存在，尝试 _www
-							try {
-								const wwwDir = plus.io.convertLocalFileSystemURL('_www');
-								filePath = `${wwwDir}/../${fileName}`;
-							} catch (e2) {
-								console.warn('无法获取文件路径', e2);
-							}
-						}
-					}
-					
-					if (!filePath) {
-						throw new Error('无法确定文件保存路径');
-					}
-					
-					// 确保目录存在
-					try {
-						const dirPath = filePath.substring(0, filePath.lastIndexOf('/'));
-						// 尝试创建目录（如果不存在）
-						try {
-							fs.mkdirSync(dirPath);
-						} catch (mkdirErr) {
-							// 目录可能已存在，忽略错误
-							console.log('目录可能已存在:', mkdirErr);
-						}
-					} catch (dirErr) {
-						// 如果无法创建目录，继续尝试写入文件（可能目录已存在）
-						console.log('目录处理:', dirErr);
-					}
-					
-					// 写入文件（不传编码参数，默认 utf8）
-					fs.writeFileSync(filePath, logsStr);
-					
-					uni.showToast({
-						title: '日志已导出',
-						icon: 'success'
-					});
-				} catch (err) {
-					console.error('HarmonyOS 日志导出失败', err);
-					// 如果文件系统操作失败，尝试使用 uni.saveFile（需要先创建临时文件）
-					try {
-						// 使用 base64 编码作为临时方案
-						const base64Str = btoa(unescape(encodeURIComponent(logsStr)));
-						uni.showModal({
-							title: '导出提示',
-							content: `日志内容已准备，但由于文件系统限制，请手动复制以下内容保存为 ${fileName} 文件：\n\n${logsStr.substring(0, 200)}...`,
-							showCancel: false,
-							confirmText: '知道了'
-						});
-					} catch (fallbackErr) {
+		copyEmail() {
+			const email = 'support@timemanager.com';
+			// #ifdef APP-PLUS || APP-HARMONY
+			if (typeof plus !== 'undefined' && plus.setClipboardData) {
+				plus.setClipboardData({
+					data: email,
+					success: () => {
 						uni.showToast({
-							title: '导出失败，请检查权限',
+							title: '邮箱已复制',
+							icon: 'success'
+						});
+					},
+					fail: () => {
+						uni.showToast({
+							title: '复制失败',
 							icon: 'none'
 						});
 					}
-				}
-				// #endif
-			} catch (err) {
-				console.error('导出日志失败', err);
-				uni.showToast({
-					title: '导出失败',
-					icon: 'none'
+				});
+			} else {
+				uni.setClipboardData({
+					data: email,
+					success: () => {
+						uni.showToast({
+							title: '邮箱已复制',
+							icon: 'success'
+						});
+					},
+					fail: () => {
+						uni.showToast({
+							title: '复制失败',
+							icon: 'none'
+						});
+					}
 				});
 			}
-		},
-		sendFeedback() {
-			const email = 'support@timemanager.com';
-			const subject = encodeURIComponent('TimeManager 反馈建议');
-			const body = encodeURIComponent('请在此输入您的反馈和建议...\n\n');
-			
-			// #ifdef APP-PLUS
-			// 使用邮件客户端
-			const mailtoUrl = `mailto:${email}?subject=${subject}&body=${body}`;
-			plus.runtime.openURL(mailtoUrl);
 			// #endif
 			
 			// #ifdef H5
-			window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
-			// #endif
-			
-			// #ifdef APP-HARMONY
-			uni.showToast({
-				title: '请发送邮件至 support@timemanager.com',
-				icon: 'none',
-				duration: 3000
-			});
+			// H5 平台使用 Clipboard API
+			if (navigator.clipboard && navigator.clipboard.writeText) {
+				navigator.clipboard.writeText(email).then(() => {
+					uni.showToast({
+						title: '邮箱已复制',
+						icon: 'success'
+					});
+				}).catch(() => {
+					// 降级方案：使用 document.execCommand
+					const textArea = document.createElement('textarea');
+					textArea.value = email;
+					textArea.style.position = 'fixed';
+					textArea.style.opacity = '0';
+					document.body.appendChild(textArea);
+					textArea.select();
+					try {
+						document.execCommand('copy');
+						uni.showToast({
+							title: '邮箱已复制',
+							icon: 'success'
+						});
+					} catch (err) {
+						uni.showToast({
+							title: '复制失败',
+							icon: 'none'
+						});
+					}
+					document.body.removeChild(textArea);
+				});
+			} else {
+				// 降级方案
+				const textArea = document.createElement('textarea');
+				textArea.value = email;
+				textArea.style.position = 'fixed';
+				textArea.style.opacity = '0';
+				document.body.appendChild(textArea);
+				textArea.select();
+				try {
+					document.execCommand('copy');
+					uni.showToast({
+						title: '邮箱已复制',
+						icon: 'success'
+					});
+				} catch (err) {
+					uni.showToast({
+						title: '复制失败',
+						icon: 'none'
+					});
+				}
+				document.body.removeChild(textArea);
+			}
 			// #endif
 		},
 		closeFeedbackSheet() {
@@ -1388,6 +1089,8 @@ onPageScroll(e) {
 				}
 			});
 			const serializedTasks = this.tasks.map(task => ({ ...task }));
+			
+			// 保存到旧存储（兼容性）
 			uni.setStorageSync('todayTasks', serializedTasks);
 			uni.setStorageSync('todayStats', this.dailyStats);
 			
@@ -1432,7 +1135,38 @@ onPageScroll(e) {
 				}
 			}
 			
+			// 保存到旧存储（兼容性）
 			uni.setStorageSync('taskHistory', taskHistory);
+			
+			// 统一存储：保存所有数据到统一结构
+			const allData = {
+				tasks: {
+					today: serializedTasks,
+					history: taskHistory
+				},
+				stats: this.dailyStats,
+				pomodoro: {
+					counts: uni.getStorageSync('pomodoroCounts') || {},
+					settings: uni.getStorageSync('pomodoroSettings') || {},
+					backgroundState: uni.getStorageSync('pomodoroBackgroundState') || null
+				},
+				habits: {
+					list: uni.getStorageSync('habits') || [],
+					energy: uni.getStorageSync('habitEnergy') || 0,
+					level: uni.getStorageSync('habitLevel') || 1,
+					exp: uni.getStorageSync('habitExp') || 0,
+					nextLevelExp: uni.getStorageSync('habitNextLevelExp') || 100,
+					checkins: uni.getStorageSync('habitCheckins') || {},
+					lastCheckinDate: uni.getStorageSync('lastCheckinDate') || null,
+					mockDate: uni.getStorageSync('habitMockDate') || null
+				},
+				settings: {
+					goals: uni.getStorageSync('userGoals') || {}
+				},
+				_version: '1.0.0',
+				_lastUpdate: new Date().toISOString()
+			};
+			uni.setStorageSync('timeManager_appData', allData);
 		} catch (err) {
 			console.error('保存数据失败:', err);
 		}
@@ -2414,88 +2148,96 @@ scroll-view {
 }
 
 /* 数据备份样式 */
-.backup-actions {
+.backup-content {
+	padding: 60rpx 40rpx;
 	display: flex;
-	flex-direction: column;
-	gap: 24rpx;
-	margin-top: 20rpx;
+	justify-content: center;
+	align-items: center;
+	min-height: 300rpx;
 }
 
-.backup-action-btn {
+.backup-placeholder {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	padding: 40rpx 30rpx;
-	background: rgba(255,255,255,0.06);
-	border: 1rpx solid rgba(255,255,255,0.12);
-	border-radius: 24rpx;
-	transition: all 0.3s ease;
+	justify-content: center;
 }
 
-.backup-action-btn:active {
-	background: rgba(255,255,255,0.1);
-	transform: scale(0.98);
+.backup-placeholder-icon {
+	font-size: 120rpx;
+	margin-bottom: 32rpx;
+	opacity: 0.6;
 }
 
-.backup-action-icon {
-	font-size: 56rpx;
+.backup-placeholder-text {
+	font-size: 32rpx;
+	font-weight: 500;
+	color: rgba(255,255,255,0.9);
 	margin-bottom: 16rpx;
 }
 
-.backup-action-label {
-	font-size: 30rpx;
-	font-weight: 500;
-	color: rgba(255,255,255,0.9);
-	margin-bottom: 8rpx;
-}
-
-.backup-action-desc {
-	font-size: 24rpx;
+.backup-placeholder-desc {
+	font-size: 26rpx;
 	color: rgba(255,255,255,0.6);
-	text-align: center;
 }
 
 /* 反馈建议样式 */
-.feedback-actions {
+.feedback-content {
+	padding: 60rpx 40rpx;
 	display: flex;
-	flex-direction: column;
-	gap: 24rpx;
-	margin-top: 20rpx;
+	justify-content: center;
+	align-items: center;
+	min-height: 300rpx;
 }
 
-.feedback-action-btn {
+.feedback-email-section {
+	width: 100%;
+	padding: 40rpx;
+	background: rgba(255,255,255,0.04);
+	border-radius: 24rpx;
+	border: 1rpx solid rgba(255,255,255,0.08);
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	padding: 40rpx 30rpx;
-	background: rgba(255,255,255,0.06);
-	border: 1rpx solid rgba(255,255,255,0.12);
-	border-radius: 24rpx;
-	transition: all 0.3s ease;
+	gap: 24rpx;
 }
 
-.feedback-action-btn:active {
-	background: rgba(255,255,255,0.1);
+.feedback-email-label {
+	font-size: 28rpx;
+	color: rgba(255,255,255,0.8);
+	text-align: center;
+}
+
+.feedback-email-value {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 20rpx 24rpx;
+	background: rgba(110,203,255,0.1);
+	border-radius: 16rpx;
+	border: 1rpx solid rgba(110,203,255,0.2);
+	transition: all 0.3s ease;
+	width: 100%;
+}
+
+.feedback-email-value:active {
+	background: rgba(110,203,255,0.15);
 	transform: scale(0.98);
 }
 
-.feedback-action-icon {
-	font-size: 56rpx;
-	margin-bottom: 16rpx;
-}
-
-.feedback-action-label {
-	font-size: 30rpx;
+.feedback-email-text {
+	font-size: 28rpx;
+	color: #6ecbff;
 	font-weight: 500;
-	color: rgba(255,255,255,0.9);
-	margin-bottom: 8rpx;
+	flex: 1;
 }
 
-.feedback-action-desc {
-	font-size: 24rpx;
-	color: rgba(255,255,255,0.6);
-	text-align: center;
+.feedback-email-copy {
+	font-size: 32rpx;
+	margin-left: 16rpx;
+	opacity: 0.8;
 }
+
 
 /* 关于应用样式 */
 .about-content {

@@ -2,7 +2,7 @@
 	<view class="page">
 		<view class="top-bar glass" :class="{ 'glass--active': pageLoaded }">
 			<view class="top-bar__left" @tap="goBack">
-				<text class="top-bar__back">←</text>
+				<text class="top-bar__back">◉</text>
 			</view>
 			<text class="top-bar__title">日历</text>
 			<view class="top-bar__right"></view>

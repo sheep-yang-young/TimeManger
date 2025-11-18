@@ -2,7 +2,7 @@
 	<view class="page">
 		<view class="top-bar glass" :class="pageLoaded && 'glass--active'">
 			<view class="top-bar__left" @tap="goBackToToday">
-				<text class="top-bar__back">◀</text>
+				<text class="top-bar__back">◉</text>
 			</view>
 			<view class="top-bar__center" @longpress="toggleTesterPanel">
 				<text class="top-bar__title">番茄钟</text>
@@ -699,7 +699,24 @@ export default {
 					savedAt: Date.now() // 添加保存时间戳，用于验证
 				};
 				try {
+					// 保存到旧存储（兼容性）
 					uni.setStorageSync('pomodoroBackgroundState', state);
+					
+					// 统一存储：同步到统一数据结构
+					try {
+						const allData = uni.getStorageSync('timeManager_appData') || {};
+						allData.pomodoro = {
+							counts: uni.getStorageSync(STORAGE_COUNT_KEY) || {},
+							settings: uni.getStorageSync(STORAGE_SETTINGS_KEY) || {},
+							backgroundState: state
+						};
+						allData._version = '1.0.0';
+						allData._lastUpdate = new Date().toISOString();
+						uni.setStorageSync('timeManager_appData', allData);
+					} catch (unifiedErr) {
+						console.warn('同步到统一存储失败:', unifiedErr);
+					}
+					
 					console.log('✓ 番茄钟后台状态已保存', {
 						mode: this.currentModeKey,
 						elapsed: this.elapsedSeconds,
@@ -924,7 +941,23 @@ export default {
 				targetTomatoes: this.targetTomatoes
 			};
 			try {
+				// 保存到旧存储（兼容性）
 				uni.setStorageSync(STORAGE_SETTINGS_KEY, payload);
+				
+				// 统一存储：同步到统一数据结构
+				try {
+					const allData = uni.getStorageSync('timeManager_appData') || {};
+					allData.pomodoro = {
+						counts: uni.getStorageSync(STORAGE_COUNT_KEY) || {},
+						settings: payload,
+						backgroundState: uni.getStorageSync('pomodoroBackgroundState') || null
+					};
+					allData._version = '1.0.0';
+					allData._lastUpdate = new Date().toISOString();
+					uni.setStorageSync('timeManager_appData', allData);
+				} catch (unifiedErr) {
+					console.warn('同步到统一存储失败:', unifiedErr);
+				}
 			} catch (err) {
 				console.warn('保存番茄设定失败', err);
 			}
@@ -951,8 +984,24 @@ export default {
 			const store = this.readSessionStore();
 			store[this.buildTodayKey()] = this.sessionsCompleted;
 			try {
+				// 保存到旧存储（兼容性）
 				uni.setStorageSync(STORAGE_COUNT_KEY, store);
 				uni.$emit('pomodoro-updated', { count: this.sessionsCompleted });
+				
+				// 统一存储：同步到统一数据结构
+				try {
+					const allData = uni.getStorageSync('timeManager_appData') || {};
+					allData.pomodoro = {
+						counts: store,
+						settings: uni.getStorageSync(STORAGE_SETTINGS_KEY) || {},
+						backgroundState: uni.getStorageSync('pomodoroBackgroundState') || null
+					};
+					allData._version = '1.0.0';
+					allData._lastUpdate = new Date().toISOString();
+					uni.setStorageSync('timeManager_appData', allData);
+				} catch (unifiedErr) {
+					console.warn('同步到统一存储失败:', unifiedErr);
+				}
 			} catch (err) {
 				console.warn('保存番茄统计失败', err);
 			}
