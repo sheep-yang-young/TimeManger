@@ -186,6 +186,7 @@ export default {
 			allTasks: {},
 			_isInitialized: false,  // 标记是否已初始化
 			scrollTimer: null, // 滚动节流定时器
+			revealTimer: null,
 			bottomNavItems: [
 				{ key: 'today', label: '今日', icon: '◎', target: '/pages/index/index' },
 				{ key: 'calendar', label: '日历', icon: '◉', target: '/pages/calendar/index' },
@@ -211,15 +212,15 @@ export default {
 			this._isInitialized = true;
 		}
 		// 立即显示页面内容（页面可能已预加载）
-		this.pageLoaded = true;
+		this.triggerPageReveal();
 	},
 	onShow() {
 		// 设置当前激活的导航项
 		this.activeNav = 'calendar';
 		// 只刷新任务数据，不重新初始化
 		this.loadAllTasks();
-		// 页面切换时立即显示内容（页面已预加载）
-		this.pageLoaded = true;
+		// 每次进入页面重新触发动画
+		this.triggerPageReveal();
 	},
 	onPageScroll(e) {
 		// 节流处理，减少频繁更新
@@ -238,8 +239,25 @@ export default {
 			clearTimeout(this.scrollTimer);
 			this.scrollTimer = null;
 		}
+		if (this.revealTimer) {
+			clearTimeout(this.revealTimer);
+			this.revealTimer = null;
+		}
 	},
 	methods: {
+		triggerPageReveal() {
+			if (this.revealTimer) {
+				clearTimeout(this.revealTimer);
+				this.revealTimer = null;
+			}
+			this.pageLoaded = false;
+			this.$nextTick(() => {
+				this.revealTimer = setTimeout(() => {
+					this.pageLoaded = true;
+					this.revealTimer = null;
+				}, 30);
+			});
+		},
 		goBack() {
 			// 切换到首页
 			uni.switchTab({ url: '/pages/index/index' });
@@ -557,6 +575,12 @@ export default {
 	padding: 42rpx 32rpx;
 }
 
+.calendar.glass--active .calendar__header,
+.calendar.glass--active .calendar__weekdays {
+	animation: fade-slide 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+	animation-delay: 0.05s;
+}
+
 .calendar__header {
 	display: flex;
 	justify-content: space-between;
@@ -613,6 +637,18 @@ export default {
 	gap: 8rpx;
 }
 
+.calendar.glass--active .calendar__date {
+	animation: calendar-pop 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.calendar.glass--active .calendar__date:nth-child(7n + 1) { animation-delay: 0.02s; }
+.calendar.glass--active .calendar__date:nth-child(7n + 2) { animation-delay: 0.06s; }
+.calendar.glass--active .calendar__date:nth-child(7n + 3) { animation-delay: 0.1s; }
+.calendar.glass--active .calendar__date:nth-child(7n + 4) { animation-delay: 0.14s; }
+.calendar.glass--active .calendar__date:nth-child(7n + 5) { animation-delay: 0.18s; }
+.calendar.glass--active .calendar__date:nth-child(7n + 6) { animation-delay: 0.22s; }
+.calendar.glass--active .calendar__date:nth-child(7n + 7) { animation-delay: 0.26s; }
+
 .calendar__date {
 	position: relative;
 	aspect-ratio: 1;
@@ -665,6 +701,20 @@ export default {
 
 .tasks {
 	padding: 40rpx 32rpx 32rpx;
+}
+
+.tasks.glass--active .task {
+	animation: list-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.tasks.glass--active .task:nth-child(1) { animation-delay: 0.05s; }
+.tasks.glass--active .task:nth-child(2) { animation-delay: 0.1s; }
+.tasks.glass--active .task:nth-child(3) { animation-delay: 0.15s; }
+.tasks.glass--active .task:nth-child(4) { animation-delay: 0.2s; }
+.tasks.glass--active .task:nth-child(5) { animation-delay: 0.25s; }
+
+.tasks.glass--active .empty {
+	animation: list-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .card-header {
@@ -800,5 +850,57 @@ export default {
 
 .bottom-bar__label {
 	font-size: 24rpx;
+}
+
+@keyframes fade-slide {
+	0% {
+		opacity: 0;
+		transform: translateY(40rpx);
+	}
+	100% {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes calendar-pop {
+	0% {
+		opacity: 0;
+		transform: scale(0.85) translateY(30rpx);
+	}
+	70% {
+		opacity: 1;
+		transform: scale(1.05) translateY(0);
+	}
+	100% {
+		transform: scale(1) translateY(0);
+	}
+}
+
+@keyframes list-in {
+	0% {
+		opacity: 0;
+		transform: translateY(35rpx) scale(0.98);
+	}
+	100% {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.calendar.glass--active .calendar__header,
+	.calendar.glass--active .calendar__weekdays,
+	.calendar.glass--active .calendar__date,
+	.tasks.glass--active .task,
+	.tasks.glass--active .empty {
+		animation: none !important;
+	}
+	.glass,
+	.task,
+	.calendar__nav,
+	.bottom-bar {
+		transition-duration: 0.01ms !important;
+	}
 }
 </style>

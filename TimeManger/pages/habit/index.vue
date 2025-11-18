@@ -1182,6 +1182,22 @@ export default {
 	margin-bottom: 40rpx;
 }
 
+.energy-overview.glass--active .energy-stat {
+	animation: float-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.energy-overview.glass--active .energy-stat:nth-of-type(1) {
+	animation-delay: 0.05s;
+}
+
+.energy-overview.glass--active .energy-stat:nth-of-type(2) {
+	animation-delay: 0.15s;
+}
+
+.energy-overview.glass--active .energy-stat:nth-of-type(3) {
+	animation-delay: 0.25s;
+}
+
 .energy-stat {
 	display: flex;
 	flex-direction: column;
@@ -1246,6 +1262,7 @@ export default {
 	border-radius: 999rpx;
 	transform-origin: left;
 	transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+	animation: shimmer 3.2s ease-in-out infinite alternate;
 }
 
 /* 热力图 */
@@ -1283,6 +1300,38 @@ export default {
 	flex-direction: column;
 	align-items: center;
 	gap: 12rpx;
+}
+
+.heatmap.glass--active .heatmap-cell {
+	animation: float-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.heatmap.glass--active .heatmap-cell:nth-of-type(1) {
+	animation-delay: 0.05s;
+}
+
+.heatmap.glass--active .heatmap-cell:nth-of-type(2) {
+	animation-delay: 0.1s;
+}
+
+.heatmap.glass--active .heatmap-cell:nth-of-type(3) {
+	animation-delay: 0.15s;
+}
+
+.heatmap.glass--active .heatmap-cell:nth-of-type(4) {
+	animation-delay: 0.2s;
+}
+
+.heatmap.glass--active .heatmap-cell:nth-of-type(5) {
+	animation-delay: 0.25s;
+}
+
+.heatmap.glass--active .heatmap-cell:nth-of-type(6) {
+	animation-delay: 0.3s;
+}
+
+.heatmap.glass--active .heatmap-cell:nth-of-type(7) {
+	animation-delay: 0.35s;
 }
 
 .heatmap-cell__label {
@@ -1331,6 +1380,34 @@ export default {
 .habits {
 	padding: 40rpx 32rpx 60rpx;
 	margin-bottom: 40rpx;
+}
+
+.habits.glass--active .habit-card {
+	animation: list-in 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.habits.glass--active .habit-card:nth-child(1) {
+	animation-delay: 0.05s;
+}
+
+.habits.glass--active .habit-card:nth-child(2) {
+	animation-delay: 0.1s;
+}
+
+.habits.glass--active .habit-card:nth-child(3) {
+	animation-delay: 0.15s;
+}
+
+.habits.glass--active .habit-card:nth-child(4) {
+	animation-delay: 0.2s;
+}
+
+.habits.glass--active .habit-card:nth-child(5) {
+	animation-delay: 0.25s;
+}
+
+.habits.glass--active .habit-card:nth-child(6) {
+	animation-delay: 0.3s;
 }
 
 .habit-card {
@@ -1644,9 +1721,23 @@ export default {
 	font-size: 90rpx;
 	font-weight: 400;
 	z-index: 10;
+	overflow: visible;
 	transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
 		box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1),
 		opacity 0.3s ease;
+}
+
+.fab::after {
+	content: '';
+	position: absolute;
+	inset: -18rpx;
+	border-radius: inherit;
+	background: radial-gradient(circle, rgba(90,255,208,0.55), rgba(15,27,43,0));
+	opacity: 0.65;
+	filter: blur(18rpx);
+	z-index: -1;
+	animation: fab-glow 4s ease-in-out infinite;
+	pointer-events: none;
 }
 
 .fab--pulse {
@@ -1685,6 +1776,80 @@ export default {
 	}
 }
 
+@keyframes float-in {
+	0% {
+		opacity: 0;
+		transform: translateY(50rpx) scale(0.96);
+	}
+	100% {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+@keyframes list-in {
+	0% {
+		opacity: 0;
+		transform: translateY(40rpx) scale(0.98);
+	}
+	100% {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+@keyframes shimmer {
+	0% {
+		filter: drop-shadow(0 0 0 rgba(255, 237, 78, 0));
+	}
+	100% {
+		filter: drop-shadow(0 0 24rpx rgba(255, 237, 78, 0.35));
+	}
+}
+
+@keyframes sheet-bounce {
+	0% {
+		opacity: 0;
+		transform: translateY(120%);
+	}
+	70% {
+		opacity: 1;
+		transform: translateY(-2%);
+	}
+	100% {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes fab-glow {
+	0% {
+		opacity: 0.4;
+		transform: scale(0.9);
+	}
+	100% {
+		opacity: 0.85;
+		transform: scale(1.08);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.energy-overview.glass--active .energy-stat,
+	.heatmap.glass--active .heatmap-cell,
+	.habits.glass--active .habit-card,
+	.fab::after,
+	.level-progress__fill,
+	.sheet--open {
+		animation: none !important;
+	}
+	.glass,
+	.habit-card,
+	.sheet,
+	.fab {
+		transition-duration: 0.01ms !important;
+	}
+}
+
 .sheet {
 	position: fixed;
 	left: 0;
@@ -1712,6 +1877,7 @@ export default {
 	transform: translateY(0);
 	pointer-events: auto;
 	opacity: 1;
+	animation: sheet-bounce 0.65s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
 
 .sheet__handle {

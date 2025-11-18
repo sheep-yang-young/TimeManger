@@ -1396,11 +1396,49 @@ export default {
 	font-weight: 600;
 }
 
+.side-menu__header,
+.side-menu__item {
+	opacity: 0;
+	transform: translateX(-32rpx);
+	transition: transform 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+		opacity 0.35s ease;
+}
+
+.side-menu--open .side-menu__header,
+.side-menu--open .side-menu__item {
+	opacity: 1;
+	transform: translateX(0);
+}
+
+.side-menu--open .side-menu__header {
+	transition-delay: 0.02s;
+}
+
 .side-menu__list {
 	margin-top: 70rpx;
 	display: flex;
 	flex-direction: column;
 	gap: 44rpx;
+}
+
+.side-menu--open .side-menu__item:nth-child(1) {
+	transition-delay: 0.08s;
+}
+
+.side-menu--open .side-menu__item:nth-child(2) {
+	transition-delay: 0.12s;
+}
+
+.side-menu--open .side-menu__item:nth-child(3) {
+	transition-delay: 0.16s;
+}
+
+.side-menu--open .side-menu__item:nth-child(4) {
+	transition-delay: 0.2s;
+}
+
+.side-menu--open .side-menu__item:nth-child(5) {
+	transition-delay: 0.24s;
 }
 
 .side-menu__item-label {
@@ -1463,6 +1501,30 @@ export default {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: 26rpx;
+}
+
+.efficiency.glass--active .stat-card {
+	animation: float-in 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.efficiency.glass--active .stat-card:nth-child(2) {
+	animation-delay: 0.08s;
+}
+
+.efficiency.glass--active .stat-card:nth-child(3) {
+	animation-delay: 0.16s;
+}
+
+.efficiency.glass--active .stat-card:nth-child(4) {
+	animation-delay: 0.24s;
+}
+
+.efficiency.glass--active .stat-card:nth-child(5) {
+	animation-delay: 0.32s;
+}
+
+.efficiency.glass--active .stat-card:nth-child(6) {
+	animation-delay: 0.4s;
 }
 
 .stat-card {
@@ -1594,6 +1656,38 @@ export default {
 .tasks {
 	padding: 40rpx 32rpx 32rpx;
 	margin-bottom: 40rpx;
+}
+
+.tasks.glass--active .task {
+	animation: list-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.tasks.glass--active .task:nth-child(1) {
+	animation-delay: 0.05s;
+}
+
+.tasks.glass--active .task:nth-child(2) {
+	animation-delay: 0.1s;
+}
+
+.tasks.glass--active .task:nth-child(3) {
+	animation-delay: 0.15s;
+}
+
+.tasks.glass--active .task:nth-child(4) {
+	animation-delay: 0.2s;
+}
+
+.tasks.glass--active .task:nth-child(5) {
+	animation-delay: 0.25s;
+}
+
+.tasks.glass--active .task:nth-child(6) {
+	animation-delay: 0.3s;
+}
+
+.tasks.glass--active .empty {
+	animation: list-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .task {
@@ -1747,6 +1841,72 @@ export default {
 	}
 }
 
+@keyframes float-in {
+	0% {
+		opacity: 0;
+		transform: translateY(50rpx) scale(0.96);
+	}
+	100% {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+@keyframes list-in {
+	0% {
+		opacity: 0;
+		transform: translateY(40rpx) scale(0.98);
+	}
+	100% {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+@keyframes sheet-bounce {
+	0% {
+		opacity: 0;
+		transform: translateY(120%);
+	}
+	70% {
+		opacity: 1;
+		transform: translateY(-2%);
+	}
+	100% {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes fab-glow {
+	0% {
+		opacity: 0.35;
+		transform: scale(0.95);
+	}
+	100% {
+		opacity: 0.8;
+		transform: scale(1.05);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.efficiency.glass--active .stat-card,
+	.tasks.glass--active .task,
+	.tasks.glass--active .empty,
+	.fab::after,
+	.sheet--open {
+		animation: none !important;
+	}
+	.glass,
+	.task,
+	.fab,
+	.sheet,
+	.side-menu__header,
+	.side-menu__item {
+		transition-duration: 0.01ms !important;
+	}
+}
+
 .bottom-bar {
 	position: fixed;
 	left: 40rpx;
@@ -1819,9 +1979,23 @@ export default {
 	font-size: 90rpx;
 	font-weight: 400;
 	z-index: 10;
+	overflow: visible;
 	transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
 		box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1),
 		opacity 0.3s ease;
+}
+
+.fab::after {
+	content: '';
+	position: absolute;
+	inset: -18rpx;
+	border-radius: inherit;
+	background: radial-gradient(circle, rgba(110,203,255,0.55), rgba(16,24,40,0));
+	opacity: 0.6;
+	filter: blur(18rpx);
+	z-index: -1;
+	animation: fab-glow 4s ease-in-out infinite;
+	pointer-events: none;
 }
 
 .fab--pulse {
@@ -1875,6 +2049,7 @@ export default {
 	transform: translateY(0);
 	pointer-events: auto;
 	opacity: 1;
+	animation: sheet-bounce 0.65s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
 
 .sheet__handle {

@@ -1184,6 +1184,21 @@ export default {
 	gap: 34rpx;
 }
 
+.timer.glass--active .timer__ring {
+	animation: ring-rise 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.timer.glass--active .timer__time {
+	animation: digit-pop 0.9s cubic-bezier(0.2, 0.6, 0.2, 1) forwards;
+	animation-delay: 0.1s;
+}
+
+.timer.glass--active .timer__hint,
+.timer.glass--active .timer__state {
+	animation: fade-slide 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+	animation-delay: 0.2s;
+}
+
 .timer__display {
 	display: flex;
 	flex-direction: column;
@@ -1209,6 +1224,7 @@ export default {
 	border-radius: 12rpx;
 	transform-origin: left;
 	transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+	animation: pulse-progress 3.2s ease-in-out infinite;
 }
 
 .timer__time {
@@ -1236,6 +1252,12 @@ export default {
 	display: flex;
 	gap: 24rpx;
 	justify-content: center;
+}
+
+.timer.glass--active .timer__controls,
+.timer.glass--active .timer__footer {
+	animation: fade-slide 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+	animation-delay: 0.3s;
 }
 
 .timer__button {
@@ -1309,6 +1331,22 @@ export default {
 	gap: 24rpx;
 }
 
+.settings.glass--active .settings__field {
+	animation: list-in 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.settings.glass--active .settings__field:nth-of-type(1) {
+	animation-delay: 0.05s;
+}
+
+.settings.glass--active .settings__field:nth-of-type(2) {
+	animation-delay: 0.15s;
+}
+
+.settings.glass--active .settings__field:nth-of-type(3) {
+	animation-delay: 0.25s;
+}
+
 .settings__label-row {
 	display: flex;
 	justify-content: space-between;
@@ -1363,6 +1401,22 @@ export default {
 	border-radius: 24rpx;
 	background: rgba(255,255,255,0.06);
 	border: 1rpx solid rgba(255,255,255,0.1);
+}
+
+.insights.glass--active .tip {
+	animation: list-in 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.insights.glass--active .tip:nth-child(1) {
+	animation-delay: 0.05s;
+}
+
+.insights.glass--active .tip:nth-child(2) {
+	animation-delay: 0.15s;
+}
+
+.insights.glass--active .tip:nth-child(3) {
+	animation-delay: 0.25s;
 }
 
 .tip__title {
@@ -1425,6 +1479,104 @@ export default {
 	}
 }
 
+@keyframes ring-rise {
+	0% {
+		opacity: 0;
+		transform: translateY(30rpx) scaleX(0.7);
+	}
+	100% {
+		opacity: 1;
+		transform: translateY(0) scaleX(1);
+	}
+}
+
+@keyframes digit-pop {
+	0% {
+		opacity: 0;
+		transform: scale(0.85);
+	}
+	60% {
+		opacity: 1;
+		transform: scale(1.04);
+	}
+	100% {
+		transform: scale(1);
+	}
+}
+
+@keyframes fade-slide {
+	0% {
+		opacity: 0;
+		transform: translateY(32rpx);
+	}
+	100% {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes pulse-progress {
+	0% {
+		filter: drop-shadow(0 0 0 rgba(110,203,255,0));
+	}
+	100% {
+		filter: drop-shadow(0 0 28rpx rgba(110,203,255,0.55));
+	}
+}
+
+@keyframes list-in {
+	0% {
+		opacity: 0;
+		transform: translateY(40rpx) scale(0.98);
+	}
+	100% {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+@keyframes fade-in {
+	0% {
+		opacity: 0;
+	}
+	100% {
+		opacity: 1;
+	}
+}
+
+@keyframes report-rise {
+	0% {
+		opacity: 0;
+		transform: translateY(60rpx) scale(0.94);
+	}
+	100% {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.timer.glass--active .timer__ring,
+	.timer.glass--active .timer__time,
+	.timer.glass--active .timer__hint,
+	.timer.glass--active .timer__state,
+	.timer.glass--active .timer__controls,
+	.timer.glass--active .timer__footer,
+	.settings.glass--active .settings__field,
+	.insights.glass--active .tip,
+	.report-mask,
+	.report,
+	.timer__ring-progress {
+		animation: none !important;
+	}
+	.glass,
+	.timer__button,
+	.slider,
+	.report {
+		transition-duration: 0.01ms !important;
+	}
+}
+
 .bottom-bar {
 	position: fixed;
 	left: 40rpx;
@@ -1481,6 +1633,7 @@ export default {
 	place-items: center;
 	padding: 40rpx;
 	box-sizing: border-box;
+	animation: fade-in 0.35s ease;
 }
 
 .report {
@@ -1492,6 +1645,7 @@ export default {
 	display: flex;
 	flex-direction: column;
 	gap: 32rpx;
+	animation: report-rise 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .report__header {
