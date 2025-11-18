@@ -1,7 +1,5 @@
 <template>
 	<view class="page">
-		<view class="page__frost"></view>
-
 		<view class="top-bar glass" :class="pageLoaded && 'glass--active'">
 			<view class="top-bar__left" @tap="goBackToToday">
 				<text class="top-bar__back">◀</text>
@@ -843,25 +841,12 @@ export default {
 	overflow: hidden;
 }
 
-.page__frost {
-	position: absolute;
-	left: -40vw;
-	top: -40vh;
-	width: 120vw;
-	height: 120vh;
-	background: radial-gradient(circle at 20% 30%, rgba(110,203,255,0.45), transparent 55%),
-		radial-gradient(circle at 75% 25%, rgba(200,155,255,0.4), transparent 60%),
-		radial-gradient(circle at 50% 80%, rgba(255,159,168,0.35), transparent 60%);
-	filter: blur(60rpx);
-	z-index: 1;
-}
-
 .glass {
-	background: rgba(255, 255, 255, 0.08);
-	border: 1rpx solid rgba(255, 255, 255, 0.12);
-	backdrop-filter: blur(50rpx);
+	background: rgba(255, 255, 255, 0.12);
+	border: 1rpx solid rgba(255, 255, 255, 0.18);
 	border-radius: 32rpx;
-	box-shadow: 0 26rpx 70rpx rgba(9, 20, 35, 0.55);
+	box-shadow: 0 26rpx 70rpx rgba(9, 20, 35, 0.55),
+		inset 0 1rpx 0 rgba(255, 255, 255, 0.1);
 	transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1),
 		box-shadow 0.6s cubic-bezier(0.16, 1, 0.3, 1),
 		opacity 0.6s ease;
@@ -1230,8 +1215,7 @@ export default {
 	top: 0;
 	width: 100%;
 	height: 100%;
-	background: rgba(10,17,28,0.55);
-	backdrop-filter: blur(6rpx);
+	background: rgba(10,17,28,0.65);
 	z-index: 20;
 	display: grid;
 	place-items: center;
