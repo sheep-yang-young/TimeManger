@@ -55,7 +55,7 @@
 					<text class="card-title">本周打卡</text>
 					<text class="card-sub">{{ weekCheckinCount }} 次完成</text>
 				</view>
-				<view class="heatmap-grid" :prop="weekDays" :change:prop="renderjs.updateHeatmap">
+				<view class="heatmap-grid">
 					<view 
 						class="heatmap-cell" 
 						v-for="(day, index) in weekDays" 
@@ -64,7 +64,7 @@
 					>
 						<text class="heatmap-cell__label">{{ day.label }}</text>
 						<view class="heatmap-cell__bar">
-							<view class="heatmap-cell__fill" :data-index="index"></view>
+							<view class="heatmap-cell__fill" :style="{ height: day.height }"></view>
 						</view>
 						<text class="heatmap-cell__count">{{ day.count }}</text>
 					</view>
@@ -280,9 +280,17 @@
 					</view>
 				</view>
 			</view>
+			<view class="debug-section">
+				<text class="debug-section__title">数据管理</text>
+				<view class="debug-actions">
+					<button class="debug-btn-action debug-btn-action--danger" @tap.stop="clearAllHabitData">
+						清空所有数据
+					</button>
+				</view>
+			</view>
 		</view>
 	</view>
-	</view>
+</view>
 </template>
 
 <script>
@@ -301,6 +309,7 @@ export default {
 			showDebugPanel: false,
 			mockDate: null,
 			debugDateInput: '',
+			heatmapUpdateKey: 0, // 用于触发热力图更新
 			quickDates: [
 				{ label: '今天', days: 0 },
 				{ label: '昨天', days: -1 },
@@ -410,9 +419,46 @@ export default {
 			return this.habits.filter(h => h.checkedToday).length;
 		},
 		weekDays() {
+			// 依赖 heatmapUpdateKey 来触发更新
+			const _ = this.heatmapUpdateKey;
+			
+			// 获取本周的日期范围
+			const today = this.getCurrentDate();
+			const currentDay = today.getDay(); // 0=周日, 1=周一, ...
+			const weekStart = new Date(today);
+			weekStart.setDate(today.getDate() - (currentDay === 0 ? 6 : currentDay - 1)); // 本周一
+			weekStart.setHours(0, 0, 0, 0);
+			
+			// 读取打卡记录
+			let checkins = {};
+			try {
+				checkins = uni.getStorageSync('habitCheckins') || {};
+			} catch (err) {
+				console.warn('读取打卡记录失败', err);
+			}
+			
+			// 计算本周每天的打卡次数
 			const days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
-			const counts = [3, 2, 4, 3, 2, 1, 2]; // 模拟数据
-			const max = Math.max(...counts);
+			const counts = [];
+			
+			for (let i = 0; i < 7; i++) {
+				const date = new Date(weekStart);
+				date.setDate(weekStart.getDate() + i);
+				const dateKey = this.getDateKey(date);
+				let count = 0;
+				
+				// 统计该日期所有习惯的打卡次数
+				this.habits.forEach(habit => {
+					const habitCheckins = checkins[habit.id] || {};
+					if (habitCheckins[dateKey]) {
+						count += 1;
+					}
+				});
+				
+				counts.push(count);
+			}
+			
+			const max = Math.max(...counts, 1); // 至少为1，避免除零
 			return days.map((label, index) => ({
 				label,
 				count: counts[index],
@@ -451,9 +497,12 @@ export default {
 onLoad() {
 	this.loadLocalData();
 	this.resetDailyCheckins();
-	setTimeout(() => {
-		this.pageLoaded = true;
-	}, 80);
+	// 立即显示页面内容（页面可能已预加载）
+	this.pageLoaded = true;
+},
+onShow() {
+	// 页面切换时立即显示内容（页面已预加载）
+	this.pageLoaded = true;
 },
 onPageScroll(e) {
 	if (!e) return;
@@ -554,12 +603,29 @@ onPageScroll(e) {
 			this.form.difficulty = value;
 		},
 		toggleHabit(habit) {
+			const today = this.buildTodayKey();
+			
 			if (habit.checkedToday) {
 				// 取消打卡
 				habit.checkedToday = false;
 				habit.streak = Math.max(0, habit.streak - 1);
 				this.totalEnergy -= habit.energy;
 				this.currentExp = Math.max(0, this.currentExp - habit.energy);
+				
+				// 删除打卡记录
+				try {
+					let checkins = uni.getStorageSync('habitCheckins') || {};
+					if (!checkins[habit.id]) {
+						checkins[habit.id] = {};
+					}
+					delete checkins[habit.id][today];
+					uni.setStorageSync('habitCheckins', checkins);
+					// 触发热力图更新
+					this.heatmapUpdateKey += 1;
+				} catch (err) {
+					console.warn('删除打卡记录失败', err);
+				}
+				
 				uni.showToast({
 					title: '已取消打卡',
 					icon: 'none'
@@ -570,6 +636,20 @@ onPageScroll(e) {
 				habit.streak += 1;
 				this.totalEnergy += habit.energy;
 				this.currentExp += habit.energy;
+				
+				// 记录打卡
+				try {
+					let checkins = uni.getStorageSync('habitCheckins') || {};
+					if (!checkins[habit.id]) {
+						checkins[habit.id] = {};
+					}
+					checkins[habit.id][today] = true;
+					uni.setStorageSync('habitCheckins', checkins);
+					// 触发热力图更新
+					this.heatmapUpdateKey += 1;
+				} catch (err) {
+					console.warn('保存打卡记录失败', err);
+				}
 				
 				// 检查升级
 				if (this.currentExp >= this.nextLevelExp) {
@@ -611,18 +691,51 @@ onPageScroll(e) {
 		deleteHabit(habit) {
 			uni.showModal({
 				title: '确认删除',
-				content: `确定要删除习惯"${habit.title}"吗？这将清除所有打卡记录。`,
+				content: `确定要删除习惯"${habit.title}"吗？这将清除所有打卡记录并扣除相关经验。`,
 				success: (res) => {
 					if (res.confirm) {
+						// 计算该习惯的历史贡献（根据连续天数估算）
+						// 假设每天打卡获得该习惯的能量值作为经验
+						const totalContribution = habit.streak * habit.energy;
+						
+						// 扣除经验和能量
+						this.totalEnergy = Math.max(0, this.totalEnergy - totalContribution);
+						this.currentExp = Math.max(0, this.currentExp - totalContribution);
+						
+						// 如果经验扣除后导致降级，需要处理
+						while (this.currentLevel > 1 && this.currentExp < 0) {
+							this.currentLevel -= 1;
+							// 计算上一级所需的经验
+							let prevLevelExp = 100; // 初始经验
+							for (let i = 1; i < this.currentLevel; i++) {
+								prevLevelExp = Math.floor(prevLevelExp * 1.5);
+							}
+							this.currentExp = prevLevelExp + this.currentExp;
+							this.nextLevelExp = Math.floor(prevLevelExp * 1.5);
+						}
+						
+						// 删除习惯
 						const index = this.habits.findIndex(h => h.id === habit.id);
 						if (index !== -1) {
 							this.habits.splice(index, 1);
-							this.saveLocalData();
-							uni.showToast({
-								title: '已删除',
-								icon: 'success'
-							});
 						}
+						
+						// 删除该习惯的打卡记录
+						try {
+							let checkins = uni.getStorageSync('habitCheckins') || {};
+							delete checkins[habit.id];
+							uni.setStorageSync('habitCheckins', checkins);
+							// 触发热力图更新
+							this.heatmapUpdateKey += 1;
+						} catch (err) {
+							console.warn('删除打卡记录失败', err);
+						}
+						
+						this.saveLocalData();
+						uni.showToast({
+							title: '已删除',
+							icon: 'success'
+						});
 					}
 				}
 			});
@@ -710,13 +823,29 @@ onPageScroll(e) {
 		const today = this.buildTodayKey();
 		const lastCheckinDate = uni.getStorageSync('lastCheckinDate');
 		
+		// 读取打卡记录
+		let checkins = {};
+		try {
+			checkins = uni.getStorageSync('habitCheckins') || {};
+		} catch (err) {
+			console.warn('读取打卡记录失败', err);
+		}
+		
 		// 如果是新的一天，重置所有习惯的checkedToday状态
 		if (lastCheckinDate !== today) {
 			this.habits.forEach(habit => {
-				habit.checkedToday = false;
+				// 从打卡记录中恢复今天的打卡状态
+				const habitCheckins = checkins[habit.id] || {};
+				habit.checkedToday = !!habitCheckins[today];
 			});
 			uni.setStorageSync('lastCheckinDate', today);
 			this.saveLocalData();
+		} else {
+			// 即使是同一天，也要从打卡记录中恢复状态（防止数据不一致）
+			this.habits.forEach(habit => {
+				const habitCheckins = checkins[habit.id] || {};
+				habit.checkedToday = !!habitCheckins[today];
+			});
 		}
 	},
 	getCurrentDate() {
@@ -728,6 +857,12 @@ onPageScroll(e) {
 	},
 	buildTodayKey() {
 		const date = this.getCurrentDate();
+		const year = date.getFullYear();
+		const month = String(date.getMonth() + 1).padStart(2, '0');
+		const day = String(date.getDate()).padStart(2, '0');
+		return `${year}-${month}-${day}`;
+	},
+	getDateKey(date) {
 		const year = date.getFullYear();
 		const month = String(date.getMonth() + 1).padStart(2, '0');
 		const day = String(date.getDate()).padStart(2, '0');
@@ -782,6 +917,53 @@ onPageScroll(e) {
 		const day = String(date.getDate()).padStart(2, '0');
 		this.debugDateInput = `${year}-${month}-${day}`;
 		this.applyMockDate();
+	},
+	clearAllHabitData() {
+		uni.showModal({
+			title: '确认清空',
+			content: '确定要清空所有习惯数据吗？这将删除所有习惯、打卡记录、能量和经验，此操作不可恢复！',
+			confirmText: '确认清空',
+			cancelText: '取消',
+			success: (res) => {
+				if (res.confirm) {
+					try {
+						// 清除所有存储数据
+						uni.removeStorageSync('habits');
+						uni.removeStorageSync('habitEnergy');
+						uni.removeStorageSync('habitLevel');
+						uni.removeStorageSync('habitExp');
+						uni.removeStorageSync('habitNextLevelExp');
+						uni.removeStorageSync('habitCheckins');
+						uni.removeStorageSync('lastCheckinDate');
+						uni.removeStorageSync('habitMockDate');
+						
+						// 重置页面数据
+						this.habits = [];
+						this.totalEnergy = 0;
+						this.currentLevel = 1;
+						this.currentExp = 0;
+						this.nextLevelExp = 100;
+						this.mockDate = null;
+						this.debugDateInput = '';
+						this.heatmapUpdateKey += 1;
+						
+						uni.showToast({
+							title: '数据已清空',
+							icon: 'success'
+						});
+						
+						// 关闭调试面板
+						this.closeDebugPanel();
+					} catch (err) {
+						console.error('清空数据失败', err);
+						uni.showToast({
+							title: '清空失败',
+							icon: 'none'
+						});
+					}
+				}
+			}
+		});
 	},
 	onBottomNavTap(item) {
 		if (item.key === this.activeNav) {
@@ -1465,7 +1647,7 @@ export default {
 	top: 0;
 	width: 100%;
 	height: 100%;
-	background: rgba(10,17,28,0.65);
+	background: rgba(10,17,28,0.85);
 	z-index: 11;
 	animation: fade-in 0.4s ease;
 }
@@ -1493,6 +1675,13 @@ export default {
 	transform: translateY(120%);
 	pointer-events: none;
 	opacity: 0;
+}
+
+/* 弹窗使用假模糊效果，提升性能 */
+.sheet.glass {
+	background: rgba(18, 30, 45, 0.95);
+	box-shadow: 0 26rpx 70rpx rgba(9, 20, 35, 0.55),
+		inset 0 1rpx 0 rgba(255, 255, 255, 0.1);
 }
 
 .sheet--open {
@@ -1710,6 +1899,14 @@ export default {
 	transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
+/* 底部 bar 使用实时动态模糊 */
+.bottom-bar.glass {
+	background: rgba(255, 255, 255, 0.08);
+	border: 1rpx solid rgba(255, 255, 255, 0.12);
+	backdrop-filter: blur(50rpx);
+	-webkit-backdrop-filter: blur(50rpx);
+}
+
 .bottom-bar__item {
 	display: flex;
 	flex-direction: column;
@@ -1809,6 +2006,13 @@ export default {
 	opacity: 0;
 }
 
+/* 调试面板使用假模糊效果，提升性能 */
+.debug-panel.glass {
+	background: rgba(18, 30, 45, 0.95);
+	box-shadow: 0 26rpx 70rpx rgba(9, 20, 35, 0.55),
+		inset 0 1rpx 0 rgba(255, 255, 255, 0.1);
+}
+
 .debug-panel--open {
 	transform: translateY(0);
 	pointer-events: auto;
@@ -1897,6 +2101,16 @@ export default {
 
 .debug-btn-action--reset:active {
 	background: rgba(255,123,138,0.25);
+}
+
+.debug-btn-action--danger {
+	background: rgba(255,90,95,0.15);
+	border-color: rgba(255,90,95,0.3);
+	color: #ff5a5f;
+}
+
+.debug-btn-action--danger:active {
+	background: rgba(255,90,95,0.25);
 }
 
 .debug-quick-dates {

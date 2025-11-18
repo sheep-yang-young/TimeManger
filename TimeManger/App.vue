@@ -22,6 +22,8 @@
 		},
 		onHide: function() {
 			console.log('App Hide')
+			// 在应用进入后台时，确保番茄钟状态已保存
+			// 这个钩子会在应用切换到后台时触发
 		},
 		methods: {
 			/**
@@ -44,56 +46,65 @@
 				
 				// 检查 uni.preloadPage 是否可用（App 和 H5 平台支持）
 				if (typeof uni !== 'undefined' && typeof uni.preloadPage === 'function') {
-					// 使用官方 API 预加载，立即开始，不延迟
+					// 使用官方 API 预加载，延迟执行避免影响启动体验
 					const allPages = [...tabBarPages, ...normalPages]
-					allPages.forEach((page, index) => {
-						// 立即开始预加载，错开时间避免同时加载
-						setTimeout(() => {
-							try {
-								uni.preloadPage({
-									url: `/${page}`,
-									success: () => {
-										console.log(`✓ 页面预加载成功: ${page}`)
-									},
-									fail: (err) => {
-										console.warn(`✗ 页面预加载失败: ${page}`, err)
-									}
-								})
-							} catch (error) {
-								console.warn(`预加载页面异常: ${page}`, error)
-							}
-						}, index * 150) // 减少间隔时间，加快预加载
-					})
+					// 延迟预加载，等待首页渲染完成后再开始
+					setTimeout(() => {
+						allPages.forEach((page, index) => {
+							setTimeout(() => {
+								try {
+									uni.preloadPage({
+										url: `/${page}`,
+										success: () => {
+											console.log(`✓ 页面预加载成功: ${page}`)
+										},
+										fail: (err) => {
+											console.warn(`✗ 页面预加载失败: ${page}`, err)
+										}
+									})
+								} catch (error) {
+									console.warn(`预加载页面异常: ${page}`, error)
+								}
+							}, index * 200) // 增加间隔时间，避免同时加载
+						})
+					}, 1000) // 延迟1秒，确保首页完全渲染后再预加载
 				} else {
-					// HarmonyOS 等平台不支持 preloadPage，使用静默导航方式预加载
-					console.log('当前平台不支持 uni.preloadPage，使用静默导航方式预加载')
-					this.preloadPagesByNavigation(tabBarPages, normalPages)
+					// HarmonyOS 等平台不支持 preloadPage
+					// 不再使用导航方式预加载，避免屏幕闪烁
+					// 应使用 pages.json 中的 preloadRule 配置进行预加载
+					console.log('当前平台不支持 uni.preloadPage')
+					console.log('HarmonyOS 平台请使用 pages.json 中的 preloadRule 配置进行预加载')
+					console.log('已禁用导航方式预加载，避免屏幕闪烁')
 				}
 			},
 			
 			/**
 			 * 通过静默导航预加载页面（适用于不支持 preloadPage 的平台）
+			 * 注意：此方法会导致页面切换闪烁，已禁用
+			 * HarmonyOS 平台应使用 pages.json 中的 preloadRule 配置
 			 * @param {Array} tabBarPages - tabBar 页面列表
 			 * @param {Array} normalPages - 普通页面列表
 			 */
 			preloadPagesByNavigation(tabBarPages, normalPages) {
-				// 立即开始预加载，在应用启动时就开始
-				// 使用 requestAnimationFrame 确保在下一帧执行，不阻塞启动
+				// 禁用导航方式的预加载，避免屏幕闪烁
+				// HarmonyOS 平台应使用 pages.json 中的 preloadRule 配置进行预加载
+				console.log('已禁用导航方式预加载，避免屏幕闪烁。请使用 pages.json 中的 preloadRule 配置')
+				return
+				
+				// 以下代码已禁用，保留作为参考
+				/*
 				const startPreload = () => {
-					// 串行预加载 tabBar 页面，避免连续导航冲突
 					let currentIndex = 0
 					const preloadNext = () => {
 						if (currentIndex < tabBarPages.length) {
 							const page = tabBarPages[currentIndex]
 							this.preloadTabBarPage(page, () => {
 								currentIndex++
-								// 等待一段时间确保导航完成，再加载下一个
 								setTimeout(() => {
 									preloadNext()
 								}, 200)
 							})
 						} else {
-							// tabBar 页面预加载完成，开始预加载普通页面
 							if (normalPages.length > 0) {
 								let normalIndex = 0
 								const preloadNormalNext = () => {
@@ -118,14 +129,14 @@
 					preloadNext()
 				}
 				
-				// 使用 requestAnimationFrame 或 setTimeout(0) 确保在下一事件循环执行
 				if (typeof requestAnimationFrame !== 'undefined') {
 					requestAnimationFrame(() => {
-						setTimeout(startPreload, 100) // 短暂延迟确保首页开始渲染
+						setTimeout(startPreload, 100)
 					})
 				} else {
-					setTimeout(startPreload, 100) // 短暂延迟确保首页开始渲染
+					setTimeout(startPreload, 100)
 				}
+				*/
 			},
 			
 			/**

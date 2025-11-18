@@ -1,14 +1,6 @@
 {
 	"pages": [
 		{
-			"path": "pages/launch/index",
-			"style": {
-				"navigationBarTitleText": "启动中",
-				"navigationStyle": "custom",
-				"enablePullDownRefresh": false
-			}
-		},
-		{
 			"path": "pages/index/index",
 			"style": {
 				"navigationBarTitleText": "今日",
@@ -50,6 +42,30 @@
 				"pages/pomodoro/index",
 				"pages/habit/index",
 				"pages/calendar/index"
+			]
+		},
+		"pages/calendar/index": {
+			"network": "all",
+			"packages": ["__APP__"],
+			"pages": [
+				"pages/pomodoro/index",
+				"pages/habit/index"
+			]
+		},
+		"pages/pomodoro/index": {
+			"network": "all",
+			"packages": ["__APP__"],
+			"pages": [
+				"pages/calendar/index",
+				"pages/habit/index"
+			]
+		},
+		"pages/habit/index": {
+			"network": "all",
+			"packages": ["__APP__"],
+			"pages": [
+				"pages/calendar/index",
+				"pages/pomodoro/index"
 			]
 		}
 	},

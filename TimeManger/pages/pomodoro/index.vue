@@ -66,6 +66,7 @@
 						activeColor="#6ecbff"
 						backgroundColor="rgba(255,255,255,0.12)"
 						:disabled="settingsLocked"
+						@changing="onFocusDurationChanging"
 						@change="onFocusDurationChange"
 					></slider>
 				</view>
@@ -83,6 +84,7 @@
 						activeColor="#ff9f1f"
 						backgroundColor="rgba(255,255,255,0.12)"
 						:disabled="settingsLocked"
+						@changing="onBreakDurationChanging"
 						@change="onBreakDurationChange"
 					></slider>
 				</view>
@@ -100,6 +102,7 @@
 						activeColor="#74f7ca"
 						backgroundColor="rgba(255,255,255,0.12)"
 						:disabled="settingsLocked"
+						@changing="onTargetTomatoesChanging"
 						@change="onTargetTomatoesChange"
 					></slider>
 				</view>
@@ -225,7 +228,9 @@ export default {
 			finishButtonPressing: false,
 			finishButtonPressTimer: null,
 			foregroundServiceActive: false,
-			foregroundServicePlugin: null
+			foregroundServicePlugin: null,
+			harmonyBackgroundTaskId: null,
+			backgroundTimerState: null
 		};
 	},
 	computed: {
@@ -325,28 +330,37 @@ export default {
 		uni.hideTabBar({ animation: false });
 		this.restoreSettings();
 		this.restoreSessions();
-		setTimeout(() => {
-			this.pageLoaded = true;
-		}, 80);
+		// 立即显示页面内容（页面可能已预加载）
+		this.pageLoaded = true;
 	},
 	onShow() {
 		this.restoreSessions();
 		this.activeNav = 'tracking';
 		this.stopForegroundService();
+		this.stopHarmonyBackgroundTask();
+		// 恢复后台计时状态
+		this.restoreBackgroundTimerState();
 		if (this.timerState === 'running' && !this.timerInterval) {
 			this.startTimer();
 		}
+		// 页面切换时立即显示内容（页面已预加载）
+		this.pageLoaded = true;
 	},
 	onHide() {
 		if (this.timerState === 'running') {
 			this.startForegroundService();
+			this.startHarmonyBackgroundTask();
+			// 保存后台计时状态
+			this.saveBackgroundTimerState();
 		} else {
 			this.stopForegroundService();
+			this.stopHarmonyBackgroundTask();
 		}
 		this.clearTimer();
 	},
 	onUnload() {
 		this.stopForegroundService();
+		this.stopHarmonyBackgroundTask();
 		this.clearTimer();
 	},
 	methods: {
@@ -469,6 +483,13 @@ export default {
 			this.timerState = 'paused';
 			this.timerStartTimestamp = null;
 			this.stopForegroundService();
+			this.stopHarmonyBackgroundTask();
+			// 清除后台状态
+			try {
+				uni.removeStorageSync('pomodoroBackgroundState');
+			} catch (err) {
+				console.warn('清除后台状态失败:', err);
+			}
 		},
 		resetTimer(silent = false) {
 			this.clearTimer();
@@ -476,6 +497,13 @@ export default {
 			this.timerState = 'idle';
 			this.timerStartTimestamp = null;
 			this.stopForegroundService();
+			this.stopHarmonyBackgroundTask();
+			// 清除后台状态
+			try {
+				uni.removeStorageSync('pomodoroBackgroundState');
+			} catch (err) {
+				console.warn('清除后台状态失败:', err);
+			}
 			if (this.reportVisible) {
 				this.reportVisible = false;
 			}
@@ -491,6 +519,13 @@ export default {
 			this.clearTimer();
 			this.timerStartTimestamp = null;
 			this.stopForegroundService();
+			this.stopHarmonyBackgroundTask();
+			// 清除后台状态
+			try {
+				uni.removeStorageSync('pomodoroBackgroundState');
+			} catch (err) {
+				console.warn('清除后台状态失败:', err);
+			}
 			this.elapsedSeconds = 0;
 			this.timerState = 'idle';
 			if (prevMode === 'focus') {
@@ -601,6 +636,149 @@ export default {
 			}
 			// #endif
 		},
+		// HarmonyOS 后台任务保持
+		// 注意：在 uni-app 的 HarmonyOS 平台上，无法直接调用原生后台任务 API
+		// 因此我们使用状态保存方案，确保应用恢复后能继续计时
+		startHarmonyBackgroundTask() {
+			// #ifdef APP-HARMONY
+			if (this.harmonyBackgroundTaskId !== null) {
+				return; // 已经启动
+			}
+			
+			// 标记使用状态保存方案
+			this.harmonyBackgroundTaskId = 'state-only';
+			console.log('HarmonyOS 后台任务：使用状态保存方案，计时器状态已保存');
+			
+			// 尝试使用 plus API 的唤醒锁（如果可用）
+			try {
+				if (typeof plus !== 'undefined' && plus.device && typeof plus.device.setWakelock === 'function') {
+					plus.device.setWakelock(true);
+					console.log('HarmonyOS 已启用设备唤醒锁');
+					this.harmonyBackgroundTaskId = 'wakelock';
+				}
+			} catch (err) {
+				console.log('HarmonyOS 唤醒锁不可用，仅使用状态保存方案');
+			}
+			// #endif
+		},
+		stopHarmonyBackgroundTask() {
+			// #ifdef APP-HARMONY
+			if (this.harmonyBackgroundTaskId === null) {
+				return;
+			}
+			
+			try {
+				// 如果启用了唤醒锁，关闭它
+				if (this.harmonyBackgroundTaskId === 'wakelock') {
+					if (typeof plus !== 'undefined' && plus.device && typeof plus.device.setWakelock === 'function') {
+						plus.device.setWakelock(false);
+						console.log('HarmonyOS 已关闭设备唤醒锁');
+					}
+				}
+			} catch (err) {
+				console.warn('HarmonyOS 关闭唤醒锁异常:', err);
+			} finally {
+				this.harmonyBackgroundTaskId = null;
+			}
+			// #endif
+		},
+		// 保存后台计时状态
+		saveBackgroundTimerState() {
+			if (this.timerState === 'running' && this.timerStartTimestamp) {
+				const state = {
+					timerState: this.timerState,
+					currentModeKey: this.currentModeKey,
+					timerStartTimestamp: this.timerStartTimestamp,
+					elapsedSeconds: this.elapsedSeconds,
+					focusMinutes: this.focusMinutes,
+					breakMinutes: this.breakMinutes,
+					planActive: this.planActive,
+					planEarnedTomatoes: this.planEarnedTomatoes,
+					planFocusSeconds: this.planFocusSeconds,
+					targetTomatoes: this.targetTomatoes,
+					savedAt: Date.now() // 添加保存时间戳，用于验证
+				};
+				try {
+					uni.setStorageSync('pomodoroBackgroundState', state);
+					console.log('✓ 番茄钟后台状态已保存', {
+						mode: this.currentModeKey,
+						elapsed: this.elapsedSeconds,
+						target: this.currentModeKey === 'focus' ? this.focusMinutes * 60 : this.breakMinutes * 60
+					});
+				} catch (err) {
+					console.warn('保存后台状态失败:', err);
+				}
+			}
+		},
+		// 恢复后台计时状态
+		restoreBackgroundTimerState() {
+			try {
+				const savedState = uni.getStorageSync('pomodoroBackgroundState');
+				if (!savedState || typeof savedState !== 'object') {
+					return;
+				}
+				
+				// 检查状态是否过期
+				const savedTime = savedState.timerStartTimestamp;
+				const now = Date.now();
+				const maxElapsed = (savedState.currentModeKey === 'focus' 
+					? savedState.focusMinutes 
+					: savedState.breakMinutes) * 60 * 1000;
+				
+				// 允许1分钟误差，如果超过最大时长+1分钟，认为已过期
+				if (now - savedTime > maxElapsed + 60000) {
+					console.log('后台状态已过期，清除保存的状态');
+					uni.removeStorageSync('pomodoroBackgroundState');
+					return;
+				}
+				
+				// 恢复状态
+				if (savedState.timerState === 'running') {
+					console.log('✓ 检测到后台计时状态，正在恢复...', {
+						mode: savedState.currentModeKey,
+						savedElapsed: savedState.elapsedSeconds
+					});
+					
+					this.timerState = savedState.timerState;
+					this.currentModeKey = savedState.currentModeKey;
+					this.timerStartTimestamp = savedState.timerStartTimestamp;
+					this.elapsedSeconds = savedState.elapsedSeconds;
+					this.focusMinutes = savedState.focusMinutes || this.focusMinutes;
+					this.breakMinutes = savedState.breakMinutes || this.breakMinutes;
+					this.planActive = savedState.planActive || false;
+					this.planEarnedTomatoes = savedState.planEarnedTomatoes || 0;
+					this.planFocusSeconds = savedState.planFocusSeconds || 0;
+					this.targetTomatoes = savedState.targetTomatoes || this.targetTomatoes;
+					
+					// 重新计算已过时间（基于实际时间差）
+					const elapsed = Math.max(0, Math.floor((now - this.timerStartTimestamp) / 1000));
+					this.elapsedSeconds = elapsed;
+					
+					console.log('✓ 计时状态已恢复', {
+						mode: this.currentModeKey,
+						elapsed: this.elapsedSeconds,
+						target: this.currentModeKey === 'focus' ? this.focusMinutes * 60 : this.breakMinutes * 60
+					});
+					
+					// 检查是否已完成
+					const currentDurationSeconds = this.currentModeKey === 'focus' 
+						? this.focusMinutes * 60 
+						: this.breakMinutes * 60;
+					
+					if (this.elapsedSeconds >= currentDurationSeconds) {
+						// 计时已完成，触发完成逻辑
+						console.log('计时已完成，触发完成逻辑');
+						this.handleTimerComplete({ reason: 'auto' });
+					} else {
+						// 继续计时
+						console.log('继续计时...');
+						this.startTimer();
+					}
+				}
+			} catch (err) {
+				console.warn('恢复后台状态失败:', err);
+			}
+		},
 	onBottomNavTap(item) {
 		if (item.key === this.activeNav) {
 			return;
@@ -628,6 +806,12 @@ export default {
 				this.handleTimerComplete({ reason: 'auto' });
 			}
 		},
+		onFocusDurationChanging(event) {
+			// 滑动过程中实时更新显示
+			const value = Number(event.detail.value) || this.focusMinutes;
+			const minutes = Math.max(10, Math.min(90, value));
+			this.focusMinutes = minutes;
+		},
 		onFocusDurationChange(event) {
 			if (!this.ensureSettingsEditable()) {
 				return;
@@ -643,6 +827,12 @@ export default {
 				this.resetTimer(true);
 			}
 		},
+		onBreakDurationChanging(event) {
+			// 滑动过程中实时更新显示
+			const value = Number(event.detail.value) || this.breakMinutes;
+			const minutes = Math.max(3, Math.min(30, value));
+			this.breakMinutes = minutes;
+		},
 		onBreakDurationChange(event) {
 			if (!this.ensureSettingsEditable()) {
 				return;
@@ -657,6 +847,12 @@ export default {
 			if (this.currentModeKey === 'break') {
 				this.resetTimer(true);
 			}
+		},
+		onTargetTomatoesChanging(event) {
+			// 滑动过程中实时更新显示
+			const value = Number(event.detail.value) || this.targetTomatoes;
+			const target = Math.max(1, Math.min(12, Math.round(value)));
+			this.targetTomatoes = target;
 		},
 		onTargetTomatoesChange(event) {
 			if (!this.ensureSettingsEditable()) {
@@ -697,6 +893,13 @@ export default {
 		finalizePlan({ completed }) {
 			this.hideTesterPanel();
 			this.stopForegroundService();
+			this.stopHarmonyBackgroundTask();
+			// 清除后台状态
+			try {
+				uni.removeStorageSync('pomodoroBackgroundState');
+			} catch (err) {
+				console.warn('清除后台状态失败:', err);
+			}
 			this.clearTimer();
 			this.timerState = 'idle';
 			this.elapsedSeconds = 0;
@@ -1185,6 +1388,14 @@ export default {
 	justify-content: space-around;
 	z-index: 3;
 	padding: 0 32rpx;
+}
+
+/* 底部 bar 使用实时动态模糊 */
+.bottom-bar.glass {
+	background: rgba(255, 255, 255, 0.08);
+	border: 1rpx solid rgba(255, 255, 255, 0.12);
+	backdrop-filter: blur(50rpx);
+	-webkit-backdrop-filter: blur(50rpx);
 }
 
 .bottom-bar__item {

@@ -209,20 +209,17 @@ export default {
 			
 			this.loadAllTasks();
 			this._isInitialized = true;
-			
-			setTimeout(() => {
-				this.pageLoaded = true;
-			}, 80);
-		} else {
-			// 已初始化，直接显示
-			this.pageLoaded = true;
 		}
+		// 立即显示页面内容（页面可能已预加载）
+		this.pageLoaded = true;
 	},
 	onShow() {
 		// 设置当前激活的导航项
 		this.activeNav = 'calendar';
 		// 只刷新任务数据，不重新初始化
 		this.loadAllTasks();
+		// 页面切换时立即显示内容（页面已预加载）
+		this.pageLoaded = true;
 	},
 	onPageScroll(e) {
 		// 节流处理，减少频繁更新
@@ -356,6 +353,7 @@ export default {
 		getTasksForDate(dateKey) {
 			const result = [];
 			const targetDate = new Date(dateKey);
+			targetDate.setHours(0, 0, 0, 0);
 			
 			// Iterate through all dates in taskHistory
 			for (const historyDateKey in this.allTasks) {
@@ -363,29 +361,47 @@ export default {
 				if (!Array.isArray(tasksOnDate)) continue;
 				
 				const historyDate = new Date(historyDateKey);
+				historyDate.setHours(0, 0, 0, 0);
 				
 				for (const task of tasksOnDate) {
 					// Include task if:
 					// 1. Task has a targetDate matching this date
-					// 2. Task has no targetDate (no deadline) and was created on or before this date
-					// 3. Task has no targetDate and no createdDate, but was saved on or before this date (fallback)
+					// 2. Task has no targetDate (no deadline):
+					//    - If task is done: only show on creation date
+					//    - If task is not done: show on all dates from creation onwards
 					
 					if (task.targetDate === dateKey) {
 						// Task has deadline for this specific date
 						result.push(task);
 					} else if (!task.targetDate) {
-						// Task has no specific target date
+						// Task has no specific target date (无截止时间)
 						let effectiveCreatedDate = historyDate;
 						
 						if (task.createdDate) {
 							effectiveCreatedDate = new Date(task.createdDate);
+							effectiveCreatedDate.setHours(0, 0, 0, 0);
 						}
 						
-						// Task should appear on all dates from creation onwards
-						if (effectiveCreatedDate <= targetDate) {
-							// Check if we already added this task (avoid duplicates)
-							if (!result.find(t => t.id === task.id)) {
-								result.push(task);
+						// 如果任务已完成，只在创建日期显示
+						if (task.done) {
+							const createdDateKey = this.getDateKey(
+								effectiveCreatedDate.getFullYear(),
+								effectiveCreatedDate.getMonth(),
+								effectiveCreatedDate.getDate()
+							);
+							if (createdDateKey === dateKey) {
+								// Check if we already added this task (avoid duplicates)
+								if (!result.find(t => t.id === task.id)) {
+									result.push(task);
+								}
+							}
+						} else {
+							// 如果任务未完成，在所有日期（从创建日期开始）都显示
+							if (effectiveCreatedDate <= targetDate) {
+								// Check if we already added this task (avoid duplicates)
+								if (!result.find(t => t.id === task.id)) {
+									result.push(task);
+								}
 							}
 						}
 					}
@@ -750,6 +766,14 @@ export default {
 	z-index: 3;
 	padding: 0 32rpx;
 	transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+/* 底部 bar 使用实时动态模糊 */
+.bottom-bar.glass {
+	background: rgba(255, 255, 255, 0.08);
+	border: 1rpx solid rgba(255, 255, 255, 0.12);
+	backdrop-filter: blur(50rpx);
+	-webkit-backdrop-filter: blur(50rpx);
 }
 
 .bottom-bar__item {
