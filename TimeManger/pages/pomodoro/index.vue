@@ -4,7 +4,7 @@
 			<view class="top-bar__left" @tap="goBackToToday">
 				<text class="top-bar__back">◉</text>
 			</view>
-			<view class="top-bar__center" @longpress="toggleTesterPanel">
+			<view class="top-bar__center">
 				<text class="top-bar__title">番茄钟</text>
 				<text class="top-bar__subtitle">保持专注的小助手</text>
 			</view>
@@ -121,65 +121,19 @@
 				</view>
 			</view>
 		</scroll-view>
+	</view>
 
-		<!-- 页面底部装饰 -->
-		<view class="page-footer">
-			<text class="page-footer__text">专注当下，成就未来</text>
-			<view class="page-footer__dots">
-				<view class="dot"></view>
-				<view class="dot"></view>
-				<view class="dot"></view>
-			</view>
-		</view>
-
-		<view class="bottom-bar glass" :class="pageLoaded && 'glass--active'">
-			<view
-				class="bottom-bar__item"
-				v-for="item in bottomNavItems"
-				:key="item.key"
-				:class="activeNav === item.key && 'bottom-bar__item--active'"
-				@tap="onBottomNavTap(item)"
-			>
-				<text class="bottom-bar__icon">{{ item.icon }}</text>
-				<text class="bottom-bar__label">{{ item.label }}</text>
-			</view>
-		</view>
-
-		<view v-show="testPanelVisible" class="tester-panel glass glass--active" @tap.stop>
-			<view class="tester-panel__header">
-				<text class="tester-panel__title">调试工具</text>
-				<text class="tester-panel__close" @tap="hideTesterPanel">✕</text>
-			</view>
-			<view class="tester-panel__actions">
-				<button class="tester-panel__action" @tap="triggerTesterAction('mock-focus')">模拟完成一颗</button>
-				<button class="tester-panel__action" @tap="triggerTesterAction('mock-break')">模拟进入休息阶段</button>
-				<button class="tester-panel__action" @tap="triggerTesterAction('finish-plan')">直接完成计划</button>
-				<button class="tester-panel__action" @tap="triggerTesterAction('reset-data')">清空今日数据</button>
-			</view>
-		</view>
-
-		<view class="report-mask" v-show="reportVisible" @tap="closeReport">
-			<view class="report glass glass--active" v-show="reportVisible" @tap.stop>
-				<view class="report__header">
-					<text class="report__title">专注完成</text>
-					<text class="report__subtitle">刚刚的专注表现一览</text>
-				</view>
-				<view class="report__stats">
-					<view class="report__stat">
-						<text class="report__stat-label">专注时长</text>
-						<text class="report__stat-value">{{ reportData.duration }}</text>
-					</view>
-					<view class="report__stat">
-						<text class="report__stat-label">获番茄</text>
-						<text class="report__stat-value">{{ reportData.gained }} / {{ reportData.target }}</text>
-					</view>
-					<view class="report__stat">
-						<text class="report__stat-label">总番茄</text>
-						<text class="report__stat-value">{{ reportData.total }}</text>
-					</view>
-				</view>
-				<button class="report__action" @tap="closeReport">结束专注</button>
-			</view>
+	<!-- 底部导航栏 -->
+	<view class="bottom-bar glass" :class="pageLoaded && 'glass--active'">
+		<view
+			class="bottom-bar__item"
+			v-for="item in bottomNavItems"
+			:key="item.key"
+			:class="{ 'bottom-bar__item--active': activeNav === item.key }"
+			@tap="onBottomNavTap(item)"
+		>
+			<text class="bottom-bar__icon">{{ item.icon }}</text>
+			<text class="bottom-bar__label">{{ item.label }}</text>
 		</view>
 	</view>
 </template>
@@ -204,13 +158,6 @@ export default {
 			planActive: false,
 			planEarnedTomatoes: 0,
 			planFocusSeconds: 0,
-		bottomNavItems: [
-			{ key: 'today', label: '今日', icon: '◎', target: '/pages/index/index' },
-			{ key: 'calendar', label: '日历', icon: '◉', target: '/pages/calendar/index' },
-			{ key: 'tracking', label: '番茄钟', icon: '◴', target: '/pages/pomodoro/index' },
-			{ key: 'habit', label: '习惯', icon: '△', target: '/pages/habit/index' }
-		],
-			activeNav: 'tracking',
 			tips: [
 				{ title: '规划你的番茄', desc: '开始之前先列出 3 个最想完成的任务，明确优先级。' },
 				{ title: '保持节奏', desc: '一次番茄专注完成一件事，中途尽量避免切换任务。' },
@@ -224,13 +171,19 @@ export default {
 				total: 0,
 				completed: false
 			},
-			testPanelVisible: false,
 			finishButtonPressing: false,
 			finishButtonPressTimer: null,
 			foregroundServiceActive: false,
 			foregroundServicePlugin: null,
 			harmonyBackgroundTaskId: null,
-			backgroundTimerState: null
+			backgroundTimerState: null,
+			bottomNavItems: [
+				{ key: 'today', label: '今日', icon: '◎', target: '/pages/index/index' },
+				{ key: 'calendar', label: '日历', icon: '◉', target: '/pages/calendar/index' },
+				{ key: 'tracking', label: '番茄钟', icon: '◴', target: '/pages/pomodoro/index' },
+				{ key: 'habit', label: '习惯', icon: '△', target: '/pages/habit/index' }
+			],
+			activeNav: 'tracking'
 		};
 	},
 	computed: {
@@ -327,15 +280,15 @@ export default {
 		}
 	},
 	onLoad() {
-		uni.hideTabBar({ animation: false });
 		this.restoreSettings();
 		this.restoreSessions();
 		// 立即显示页面内容（页面可能已预加载）
 		this.pageLoaded = true;
 	},
 	onShow() {
-		this.restoreSessions();
+		// 设置当前激活的导航项
 		this.activeNav = 'tracking';
+		this.restoreSessions();
 		this.stopForegroundService();
 		this.stopHarmonyBackgroundTask();
 		// 恢复后台计时状态
@@ -365,65 +318,14 @@ export default {
 	},
 	methods: {
 		goBackToToday() {
-			if (this.activeNav === 'today') {
-				return;
-			}
 			uni.switchTab({ url: '/pages/index/index' });
 		},
-		toggleTesterPanel() {
-			this.testPanelVisible = !this.testPanelVisible;
-			if (this.testPanelVisible) {
-				uni.showToast({ title: '测试面板已开启', icon: 'none' });
+		onBottomNavTap(item) {
+			if (item.key === this.activeNav) {
+				return;
 			}
-		},
-		hideTesterPanel() {
-			this.testPanelVisible = false;
-		},
-		triggerTesterAction(action) {
-			switch (action) {
-				case 'mock-focus': {
-					this.beginPlanIfNeeded();
-					const focusSeconds = Math.max(60, this.focusMinutes * 60);
-					this.planFocusSeconds += focusSeconds;
-					this.planEarnedTomatoes += 1;
-					this.sessionsCompleted += 1;
-					this.saveSessions();
-					uni.showToast({ title: '模拟完成 1 颗', icon: 'none' });
-					break;
-				}
-				case 'mock-break': {
-					this.beginPlanIfNeeded();
-					if (this.reportVisible) {
-						this.reportVisible = false;
-					}
-					this.switchMode('break', { silent: true, autoStart: true, force: true, preserveReport: true });
-					uni.showToast({ title: '已进入休息阶段', icon: 'none' });
-					break;
-				}
-				case 'finish-plan': {
-					this.beginPlanIfNeeded();
-					const target = Math.max(1, this.targetTomatoes);
-					this.planEarnedTomatoes = target;
-					this.planFocusSeconds = target * Math.max(60, this.focusMinutes * 60);
-					this.finalizePlan({ completed: true });
-					break;
-				}
-				case 'reset-data': {
-					this.resetTimer(true);
-					this.resetPlanState();
-					this.sessionsCompleted = 0;
-					try {
-						uni.removeStorageSync(STORAGE_COUNT_KEY);
-					} catch (err) {
-						console.warn('清除番茄统计失败', err);
-					}
-					this.saveSessions();
-					this.hideTesterPanel();
-					uni.showToast({ title: '今日数据已清空', icon: 'none' });
-					break;
-				}
-				default:
-					uni.showToast({ title: '未知操作', icon: 'none' });
+			if (item.target) {
+				uni.switchTab({ url: item.target });
 			}
 		},
 		switchMode(modeKey, options = {}) {
@@ -796,14 +698,6 @@ export default {
 				console.warn('恢复后台状态失败:', err);
 			}
 		},
-	onBottomNavTap(item) {
-		if (item.key === this.activeNav) {
-			return;
-		}
-		if (item.target) {
-			uni.switchTab({ url: item.target });
-		}
-	},
 		clearTimer() {
 			if (this.timerInterval) {
 				clearInterval(this.timerInterval);
@@ -908,7 +802,6 @@ export default {
 			return false;
 		},
 		finalizePlan({ completed }) {
-			this.hideTesterPanel();
 			this.stopForegroundService();
 			this.stopHarmonyBackgroundTask();
 			// 清除后台状态
@@ -1043,7 +936,6 @@ export default {
 		},
 		closeReport() {
 			this.reportVisible = false;
-			this.hideTesterPanel();
 		},
 		formatSecondsToLabel(seconds) {
 			const safeSeconds = Math.max(0, Math.round(seconds || 0));
@@ -1360,7 +1252,7 @@ export default {
 
 .settings__value {
 	font-size: 24rpx;
-	color: rgba(255,255,255,0.7);
+	color: rgb(255, 255, 255);
 }
 
 .settings__slider {
@@ -1577,50 +1469,6 @@ export default {
 	}
 }
 
-.bottom-bar {
-	position: fixed;
-	left: 40rpx;
-	right: 40rpx;
-	bottom: 40rpx;
-	height: 120rpx;
-	border-radius: 60rpx;
-	display: flex;
-	align-items: center;
-	justify-content: space-around;
-	z-index: 3;
-	padding: 0 32rpx;
-}
-
-/* 底部 bar 使用实时动态模糊 */
-.bottom-bar.glass {
-	background: rgba(255, 255, 255, 0.08);
-	border: 1rpx solid rgba(255, 255, 255, 0.12);
-	backdrop-filter: blur(50rpx);
-	-webkit-backdrop-filter: blur(50rpx);
-}
-
-.bottom-bar__item {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 10rpx;
-	font-size: 24rpx;
-	color: rgba(255,255,255,0.62);
-	flex: 1;
-	padding: 10rpx 0;
-	transition: transform 0.25s ease, color 0.25s ease;
-}
-
-.bottom-bar__item--active {
-	color: #ffffff;
-	font-weight: 600;
-	transform: translateY(-6rpx);
-}
-
-.bottom-bar__icon {
-	font-size: 32rpx;
-}
-
 .report-mask {
 	position: fixed;
 	left: 0;
@@ -1703,54 +1551,54 @@ export default {
 	border: none;
 }
 
-.tester-panel {
+
+/* 底部导航栏 */
+.bottom-bar {
 	position: fixed;
+	left: 40rpx;
 	right: 40rpx;
-	top: 200rpx;
-	width: 320rpx;
-	padding: 28rpx 24rpx 32rpx;
+	bottom: 40rpx;
+	height: 120rpx;
+	border-radius: 60rpx;
 	display: flex;
-	flex-direction: column;
-	gap: 24rpx;
-	z-index: 11;
-}
-
-.tester-panel__header {
-	display: flex;
-	justify-content: space-between;
 	align-items: center;
+	justify-content: space-around;
+	z-index: 3;
+	padding: 0 32rpx;
+	transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
-.tester-panel__title {
-	font-size: 26rpx;
-	font-weight: 600;
+/* 底部 bar 使用实时动态模糊 */
+.bottom-bar.glass {
+	background: rgba(255, 255, 255, 0.08);
+	border: 1rpx solid rgba(255, 255, 255, 0.12);
+	backdrop-filter: blur(50rpx);
+	-webkit-backdrop-filter: blur(50rpx);
 }
 
-.tester-panel__close {
-	font-size: 28rpx;
-	color: rgba(255,255,255,0.7);
-	padding: 6rpx 10rpx;
-}
-
-.tester-panel__actions {
+.bottom-bar__item {
 	display: flex;
 	flex-direction: column;
-	gap: 18rpx;
+	align-items: center;
+	gap: 10rpx;
+	font-size: 24rpx;
+	color: rgba(255,255,255,0.62);
+	flex: 1;
+	padding: 10rpx 0;
+	transition: transform 0.25s ease, color 0.25s ease;
 }
 
-.tester-panel__action {
-	width: 100%;
-	height: 72rpx;
-	line-height: 72rpx;
-	border-radius: 20rpx;
-	background: rgba(255,255,255,0.14);
+.bottom-bar__item--active {
 	color: #ffffff;
-	font-size: 26rpx;
-	border: 1rpx solid rgba(255,255,255,0.16);
+	font-weight: 600;
+	transform: translateY(-6rpx);
 }
 
-.tester-panel__action:active {
-	background: rgba(110,203,255,0.35);
-	color: #0f1421;
+.bottom-bar__icon {
+	font-size: 32rpx;
+}
+
+.bottom-bar__label {
+	font-size: 24rpx;
 }
 </style>

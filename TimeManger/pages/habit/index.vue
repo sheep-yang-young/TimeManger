@@ -13,9 +13,6 @@
 					<text class="energy-icon">⚡</text>
 					<text class="energy-value">{{ totalEnergy }}</text>
 				</view>
-				<view class="debug-btn" @tap.stop="toggleDebugPanel">
-					<text class="debug-btn__icon">🔧</text>
-				</view>
 			</view>
 		</view>
 
@@ -87,9 +84,6 @@
 							<view class="habit-info">
 								<text class="habit-title">{{ habit.title }}</text>
 								<view class="habit-meta">
-									<text class="habit-meta__badge" :class="`habit-meta__badge--${habit.difficulty}`">
-										{{ getDifficultyLabel(habit.difficulty) }}
-									</text>
 									<text class="habit-meta__time">{{ habit.time }}</text>
 									<text class="habit-meta__energy">+{{ habit.energy }}⚡</text>
 								</view>
@@ -161,20 +155,6 @@
 		</view>
 	</view>
 
-	<!-- 底部导航栏 -->
-	<view class="bottom-bar glass" :class="{ 'glass--active': pageLoaded }">
-		<view
-			class="bottom-bar__item"
-			v-for="item in bottomNavItems"
-			:key="item.key"
-			:class="{ 'bottom-bar__item--active': activeNav === item.key }"
-			@tap="onBottomNavTap(item)"
-		>
-			<text class="bottom-bar__icon">{{ item.icon }}</text>
-			<text class="bottom-bar__label">{{ item.label }}</text>
-		</view>
-	</view>
-
 	<!-- 浮动添加按钮 -->
 	<view class="fab" :class="{ 'fab--pulse': showAddSheet, 'fab--hidden': hideFab }" @tap.stop="toggleAddSheet">
 		<text class="fab__icon">+</text>
@@ -206,25 +186,7 @@
 				>
 					<text class="time-slot__icon">{{ slot.icon }}</text>
 					<text class="time-slot__label">{{ slot.label }}</text>
-				</view>
-			</view>
-		</view>
-		<view class="form-field">
-			<text class="form-label">难度等级</text>
-			<view class="difficulty-levels">
-				<view 
-					class="difficulty-level" 
-					v-for="level in difficultyLevels" 
-					:key="level.value"
-					:class="[
-						`difficulty-level--${level.value}`,
-						{ 'difficulty-level--active': form.difficulty === level.value }
-					]"
-					@tap="selectDifficulty(level.value)"
-				>
-					<text class="difficulty-level__label">{{ level.label }}</text>
-					<text class="difficulty-level__energy">+{{ level.energy }}⚡</text>
-					<text class="difficulty-level__desc">{{ level.desc }}</text>
+					<text class="time-slot__range">{{ slot.range }}</text>
 				</view>
 			</view>
 		</view>
@@ -233,61 +195,18 @@
 		</button>
 	</view>
 
-	<!-- 调试工具面板 -->
-	<view class="sheet-mask" v-if="showDebugPanel" @tap="closeDebugPanel"></view>
-	<view class="debug-panel glass" :class="{ 'debug-panel--open': showDebugPanel }" @touchmove.stop.prevent>
-		<view class="sheet__handle"></view>
-		<view class="sheet__header">
-			<text class="sheet__title">调试工具</text>
-			<view class="sheet__close" @tap.stop="closeDebugPanel">
-				<text class="sheet__close-icon">✕</text>
-			</view>
-		</view>
-		<view class="debug-content">
-			<view class="debug-section">
-				<text class="debug-section__title">日期模拟</text>
-				<view class="debug-info">
-					<text class="debug-info__label">当前日期：</text>
-					<text class="debug-info__value">{{ currentDateDisplay }}</text>
-				</view>
-				<view class="debug-info" v-if="mockDate">
-					<text class="debug-info__label">模拟日期：</text>
-					<text class="debug-info__value debug-info__value--mock">{{ mockDateDisplay }}</text>
-				</view>
-				<view class="form-field">
-					<text class="form-label">设置模拟日期</text>
-					<picker mode="date" :value="debugDateInput" @change="onDebugDateChange">
-						<view class="form-value form-value--picker">
-							<text>{{ debugDateInput || '选择日期' }}</text>
-							<text class="form-arrow">></text>
-						</view>
-					</picker>
-				</view>
-				<view class="debug-actions">
-					<button class="debug-btn-action" @tap.stop="applyMockDate" :disabled="!debugDateInput">
-						应用模拟日期
-					</button>
-					<button class="debug-btn-action debug-btn-action--reset" @tap.stop="resetMockDate" :disabled="!mockDate">
-						重置为当前日期
-					</button>
-				</view>
-			</view>
-			<view class="debug-section">
-				<text class="debug-section__title">快速日期</text>
-				<view class="debug-quick-dates">
-					<view class="debug-quick-date" v-for="item in quickDates" :key="item.label" @tap="setQuickDate(item.days)">
-						<text class="debug-quick-date__label">{{ item.label }}</text>
-					</view>
-				</view>
-			</view>
-			<view class="debug-section">
-				<text class="debug-section__title">数据管理</text>
-				<view class="debug-actions">
-					<button class="debug-btn-action debug-btn-action--danger" @tap.stop="clearAllHabitData">
-						清空所有数据
-					</button>
-				</view>
-			</view>
+
+	<!-- 底部导航栏 -->
+	<view class="bottom-bar glass" :class="{ 'glass--active': pageLoaded }">
+		<view
+			class="bottom-bar__item"
+			v-for="item in bottomNavItems"
+			:key="item.key"
+			:class="{ 'bottom-bar__item--active': activeNav === item.key }"
+			@tap="onBottomNavTap(item)"
+		>
+			<text class="bottom-bar__icon">{{ item.icon }}</text>
+			<text class="bottom-bar__label">{{ item.label }}</text>
 		</view>
 	</view>
 </view>
@@ -302,22 +221,10 @@ export default {
 			isEditing: false,
 			editingHabit: null,
 			hideFab: false,
-			hideBottomBar: false,
 			scrollTop: 0,
 			lastScrollTop: 0,
 			scrollTimer: null, // 滚动节流定时器
-			showDebugPanel: false,
-			mockDate: null,
-			debugDateInput: '',
 			heatmapUpdateKey: 0, // 用于触发热力图更新
-			quickDates: [
-				{ label: '今天', days: 0 },
-				{ label: '昨天', days: -1 },
-				{ label: '明天', days: 1 },
-				{ label: '3天前', days: -3 },
-				{ label: '7天前', days: -7 },
-				{ label: '30天前', days: -30 }
-			],
 			totalEnergy: 850,
 			currentLevel: 5,
 			currentExp: 320,
@@ -327,7 +234,6 @@ export default {
 					id: 1,
 					title: '晨间阅读 30 分钟',
 					time: '早晨',
-					difficulty: 'medium',
 					energy: 15,
 					streak: 12,
 					checkedToday: true
@@ -336,8 +242,7 @@ export default {
 					id: 2,
 					title: '每天喝 8 杯水',
 					time: '全天',
-					difficulty: 'easy',
-					energy: 10,
+					energy: 15,
 					streak: 21,
 					checkedToday: true
 				},
@@ -345,7 +250,6 @@ export default {
 					id: 3,
 					title: '晚间冥想 20 分钟',
 					time: '晚间',
-					difficulty: 'medium',
 					energy: 15,
 					streak: 7,
 					checkedToday: false
@@ -354,28 +258,21 @@ export default {
 					id: 4,
 					title: '写作练习 1 小时',
 					time: '下午',
-					difficulty: 'hard',
-					energy: 25,
+					energy: 15,
 					streak: 5,
 					checkedToday: false
 				}
 			],
 			form: {
 				title: '',
-				time: '早晨',
-				difficulty: 'easy'
+				time: '早晨'
 			},
 			timeSlots: [
-				{ value: '早晨', label: '早晨', icon: '🌅' },
-				{ value: '上午', label: '上午', icon: '☀️' },
-				{ value: '下午', label: '下午', icon: '🌤' },
-				{ value: '晚间', label: '晚间', icon: '🌙' },
-				{ value: '全天', label: '全天', icon: '⏰' }
-			],
-			difficultyLevels: [
-				{ value: 'easy', label: '简单', energy: 10, desc: '容易坚持，适合新手' },
-				{ value: 'medium', label: '中等', energy: 15, desc: '需要一定毅力' },
-				{ value: 'hard', label: '困难', energy: 25, desc: '挑战自我，高回报' }
+				{ value: '早晨', label: '早晨', icon: '🌅', range: '06:00-09:00' },
+				{ value: '上午', label: '上午', icon: '☀️', range: '09:00-12:00' },
+				{ value: '下午', label: '下午', icon: '🌤', range: '12:00-18:00' },
+				{ value: '晚间', label: '晚间', icon: '🌙', range: '18:00-22:00' },
+				{ value: '全天', label: '全天', icon: '⏰', range: '全天' }
 			],
 		milestones: [
 			{ days: 7, icon: '🌱' },
@@ -383,13 +280,6 @@ export default {
 			{ days: 66, icon: '🌳' },
 			{ days: 100, icon: '🏆' }
 		],
-		bottomNavItems: [
-			{ key: 'today', label: '今日', icon: '◎', target: '/pages/index/index' },
-			{ key: 'calendar', label: '日历', icon: '◉', target: '/pages/calendar/index' },
-			{ key: 'tracking', label: '番茄钟', icon: '◴', target: '/pages/pomodoro/index' },
-			{ key: 'habit', label: '习惯', icon: '△', target: '/pages/habit/index' }
-		],
-		activeNav: 'habit',
 		inspirationalQuotes: [
 			'坚持，是通往成功最短的路',
 			'每一次打卡，都在遇见更好的自己',
@@ -397,7 +287,14 @@ export default {
 			'微小的改变，带来巨大的不同',
 			'今日的努力，是明日的习惯',
 			'养成习惯需要21天，成就自己只需坚持'
-		]
+		],
+		bottomNavItems: [
+			{ key: 'today', label: '今日', icon: '◎', target: '/pages/index/index' },
+			{ key: 'calendar', label: '日历', icon: '◉', target: '/pages/calendar/index' },
+			{ key: 'tracking', label: '番茄钟', icon: '◴', target: '/pages/pomodoro/index' },
+			{ key: 'habit', label: '习惯', icon: '△', target: '/pages/habit/index' }
+		],
+		activeNav: 'habit'
 	};
 },
 	computed: {
@@ -484,15 +381,6 @@ export default {
 		const day = date.getDate();
 		return `${date.getFullYear()}年${month}月${day}日 ${weekday}`;
 	},
-	mockDateDisplay() {
-		if (!this.mockDate) return '';
-		const date = new Date(this.mockDate);
-		const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-		const weekday = weekdays[date.getDay()];
-		const month = date.getMonth() + 1;
-		const day = date.getDate();
-		return `${date.getFullYear()}年${month}月${day}日 ${weekday}`;
-	}
 },
 onLoad() {
 	this.loadLocalData();
@@ -500,10 +388,12 @@ onLoad() {
 	// 立即显示页面内容（页面可能已预加载）
 	this.pageLoaded = true;
 },
-onShow() {
-	// 页面切换时立即显示内容（页面已预加载）
-	this.pageLoaded = true;
-},
+	onShow() {
+		// 设置当前激活的导航项
+		this.activeNav = 'habit';
+		// 页面切换时立即显示内容（页面已预加载）
+		this.pageLoaded = true;
+	},
 onPageScroll(e) {
 	if (!e) return;
 	
@@ -542,16 +432,11 @@ onPageScroll(e) {
 		}
 	},
 	methods: {
-		getDifficultyLabel(difficulty) {
-			const labels = { easy: '简单', medium: '中等', hard: '困难' };
-			return labels[difficulty] || '未知';
-		},
 		getHabitCardClass(habit) {
 			const classes = [];
 			if (habit.checkedToday) {
 				classes.push('habit-card--checked');
 			}
-			classes.push(`habit-card--${habit.difficulty}`);
 			return classes;
 		},
 		getHeatmapClass(count) {
@@ -592,15 +477,11 @@ onPageScroll(e) {
 		resetForm() {
 			this.form.title = '';
 			this.form.time = '早晨';
-			this.form.difficulty = 'easy';
 			this.isEditing = false;
 			this.editingHabit = null;
 		},
 		selectTimeSlot(value) {
 			this.form.time = value;
-		},
-		selectDifficulty(value) {
-			this.form.difficulty = value;
 		},
 		toggleHabit(habit) {
 			const today = this.buildTodayKey();
@@ -685,7 +566,6 @@ onPageScroll(e) {
 			this.editingHabit = habit;
 			this.form.title = habit.title;
 			this.form.time = habit.time;
-			this.form.difficulty = habit.difficulty;
 			this.showAddSheet = true;
 		},
 		deleteHabit(habit) {
@@ -743,14 +623,13 @@ onPageScroll(e) {
 		confirmHabit() {
 			if (!this.canSubmit) return;
 
-			const energyMap = { easy: 10, medium: 15, hard: 25 };
+			const defaultEnergy = 15; // 统一能量值
 			
 			if (this.isEditing && this.editingHabit) {
 				// 编辑模式
 				this.editingHabit.title = this.form.title;
 				this.editingHabit.time = this.form.time;
-				this.editingHabit.difficulty = this.form.difficulty;
-				this.editingHabit.energy = energyMap[this.form.difficulty];
+				// 保持原有能量值，不修改
 				uni.showToast({
 					title: '修改成功',
 					icon: 'success'
@@ -761,8 +640,7 @@ onPageScroll(e) {
 					id: Date.now(),
 					title: this.form.title,
 					time: this.form.time,
-					difficulty: this.form.difficulty,
-					energy: energyMap[this.form.difficulty],
+					energy: defaultEnergy,
 					streak: 0,
 					checkedToday: false
 				};
@@ -797,7 +675,6 @@ onPageScroll(e) {
 					nextLevelExp: this.nextLevelExp,
 					checkins: uni.getStorageSync('habitCheckins') || {},
 					lastCheckinDate: this.buildTodayKey(),
-					mockDate: uni.getStorageSync('habitMockDate') || null
 				};
 				allData._version = '1.0.0';
 				allData._lastUpdate = new Date().toISOString();
@@ -816,26 +693,22 @@ onPageScroll(e) {
 			const savedLevel = uni.getStorageSync('habitLevel');
 			const savedExp = uni.getStorageSync('habitExp');
 			const savedNextLevelExp = uni.getStorageSync('habitNextLevelExp');
-			const savedMockDate = uni.getStorageSync('habitMockDate');
-			
-			if (savedHabits && Array.isArray(savedHabits)) {
-				this.habits = savedHabits;
-			}
-			if (typeof savedEnergy === 'number') {
-				this.totalEnergy = savedEnergy;
-			}
-			if (typeof savedLevel === 'number') {
-				this.currentLevel = savedLevel;
-			}
-			if (typeof savedExp === 'number') {
-				this.currentExp = savedExp;
-			}
-			if (typeof savedNextLevelExp === 'number') {
-				this.nextLevelExp = savedNextLevelExp;
-			}
-			if (savedMockDate) {
-				this.mockDate = savedMockDate;
-			}
+		
+		if (savedHabits && Array.isArray(savedHabits)) {
+			this.habits = savedHabits;
+		}
+		if (typeof savedEnergy === 'number') {
+			this.totalEnergy = savedEnergy;
+		}
+		if (typeof savedLevel === 'number') {
+			this.currentLevel = savedLevel;
+		}
+		if (typeof savedExp === 'number') {
+			this.currentExp = savedExp;
+		}
+		if (typeof savedNextLevelExp === 'number') {
+			this.nextLevelExp = savedNextLevelExp;
+		}
 		} catch (err) {
 			console.error('加载习惯数据失败:', err);
 		}
@@ -870,10 +743,6 @@ onPageScroll(e) {
 		}
 	},
 	getCurrentDate() {
-		// 如果有模拟日期，使用模拟日期；否则使用当前日期
-		if (this.mockDate) {
-			return new Date(this.mockDate);
-		}
 		return new Date();
 	},
 	buildTodayKey() {
@@ -889,102 +758,8 @@ onPageScroll(e) {
 		const day = String(date.getDate()).padStart(2, '0');
 		return `${year}-${month}-${day}`;
 	},
-	toggleDebugPanel() {
-		this.showDebugPanel = !this.showDebugPanel;
-		if (this.showDebugPanel) {
-			// 如果已有模拟日期，显示在输入框中
-			if (this.mockDate) {
-				const date = new Date(this.mockDate);
-				const year = date.getFullYear();
-				const month = String(date.getMonth() + 1).padStart(2, '0');
-				const day = String(date.getDate()).padStart(2, '0');
-				this.debugDateInput = `${year}-${month}-${day}`;
-			}
-		}
-	},
-	closeDebugPanel() {
-		this.showDebugPanel = false;
-	},
-	onDebugDateChange(e) {
-		this.debugDateInput = e.detail.value;
-	},
-	applyMockDate() {
-		if (!this.debugDateInput) return;
-		this.mockDate = this.debugDateInput;
-		uni.setStorageSync('habitMockDate', this.mockDate);
-		// 重新加载数据以应用新日期
-		this.resetDailyCheckins();
-		uni.showToast({
-			title: '已应用模拟日期',
-			icon: 'success'
-		});
-	},
-	resetMockDate() {
-		this.mockDate = null;
-		this.debugDateInput = '';
-		uni.removeStorageSync('habitMockDate');
-		// 重新加载数据
-		this.resetDailyCheckins();
-		uni.showToast({
-			title: '已重置为当前日期',
-			icon: 'success'
-		});
-	},
-	setQuickDate(days) {
-		const date = new Date();
-		date.setDate(date.getDate() + days);
-		const year = date.getFullYear();
-		const month = String(date.getMonth() + 1).padStart(2, '0');
-		const day = String(date.getDate()).padStart(2, '0');
-		this.debugDateInput = `${year}-${month}-${day}`;
-		this.applyMockDate();
-	},
-	clearAllHabitData() {
-		uni.showModal({
-			title: '确认清空',
-			content: '确定要清空所有习惯数据吗？这将删除所有习惯、打卡记录、能量和经验，此操作不可恢复！',
-			confirmText: '确认清空',
-			cancelText: '取消',
-			success: (res) => {
-				if (res.confirm) {
-					try {
-						// 清除所有存储数据
-						uni.removeStorageSync('habits');
-						uni.removeStorageSync('habitEnergy');
-						uni.removeStorageSync('habitLevel');
-						uni.removeStorageSync('habitExp');
-						uni.removeStorageSync('habitNextLevelExp');
-						uni.removeStorageSync('habitCheckins');
-						uni.removeStorageSync('lastCheckinDate');
-						uni.removeStorageSync('habitMockDate');
-						
-						// 重置页面数据
-						this.habits = [];
-						this.totalEnergy = 0;
-						this.currentLevel = 1;
-						this.currentExp = 0;
-						this.nextLevelExp = 100;
-						this.mockDate = null;
-						this.debugDateInput = '';
-						this.heatmapUpdateKey += 1;
-						
-						uni.showToast({
-							title: '数据已清空',
-							icon: 'success'
-						});
-						
-						// 关闭调试面板
-						this.closeDebugPanel();
-					} catch (err) {
-						console.error('清空数据失败', err);
-						uni.showToast({
-							title: '清空失败',
-							icon: 'none'
-						});
-					}
-				}
-			}
-		});
+	goBackToHome() {
+		uni.switchTab({ url: '/pages/index/index' });
 	},
 	onBottomNavTap(item) {
 		if (item.key === this.activeNav) {
@@ -993,10 +768,7 @@ onPageScroll(e) {
 		if (item.target) {
 			uni.switchTab({ url: item.target });
 		}
-	},
-	goBackToHome() {
-		uni.switchTab({ url: '/pages/index/index' });
-	},
+	}
 	}
 };
 </script>
@@ -1126,27 +898,6 @@ export default {
 	color: #ffd700;
 }
 
-.debug-btn {
-	width: 56rpx;
-	height: 56rpx;
-	margin-left: 16rpx;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	background: rgba(255,255,255,0.08);
-	border: 1rpx solid rgba(255,255,255,0.12);
-	border-radius: 50%;
-	transition: all 0.3s ease;
-}
-
-.debug-btn:active {
-	background: rgba(110,203,255,0.2);
-	transform: scale(0.9);
-}
-
-.debug-btn__icon {
-	font-size: 28rpx;
-}
 
 .main {
 	position: relative;
@@ -1477,28 +1228,6 @@ export default {
 	align-items: center;
 	gap: 16rpx;
 	flex-wrap: wrap;
-}
-
-.habit-meta__badge {
-	padding: 4rpx 14rpx;
-	border-radius: 999rpx;
-	font-size: 20rpx;
-	font-weight: 500;
-}
-
-.habit-meta__badge--easy {
-	background: rgba(90,255,208,0.2);
-	color: #5affd0;
-}
-
-.habit-meta__badge--medium {
-	background: rgba(110,203,255,0.2);
-	color: #6ecbff;
-}
-
-.habit-meta__badge--hard {
-	background: rgba(255,159,31,0.2);
-	color: #ff9f1f;
 }
 
 .habit-meta__time {
@@ -1934,6 +1663,13 @@ export default {
 	color: rgba(255,255,255,0.7);
 }
 
+.form-hint {
+	font-size: 22rpx;
+	color: rgba(255,255,255,0.5);
+	margin-top: 8rpx;
+	line-height: 1.5;
+}
+
 .form-input {
 	background: rgba(255,255,255,0.06);
 	border: 1rpx solid rgba(255,255,255,0.08);
@@ -2000,56 +1736,13 @@ export default {
 .time-slot__label {
 	font-size: 24rpx;
 	color: rgba(255,255,255,0.9);
+	margin-top: 8rpx;
 }
 
-.difficulty-levels {
-	display: flex;
-	flex-direction: column;
-	gap: 16rpx;
-}
-
-.difficulty-level {
-	padding: 24rpx;
-	background: rgba(255,255,255,0.06);
-	border: 2rpx solid rgba(255,255,255,0.1);
-	border-radius: 20rpx;
-	transition: all 0.3s ease;
-}
-
-.difficulty-level--active {
-	border-color: rgba(110,203,255,0.5);
-	background: rgba(110,203,255,0.15);
-}
-
-.difficulty-level--easy.difficulty-level--active {
-	border-color: rgba(90,255,208,0.5);
-	background: rgba(90,255,208,0.15);
-}
-
-.difficulty-level--hard.difficulty-level--active {
-	border-color: rgba(255,159,31,0.5);
-	background: rgba(255,159,31,0.15);
-}
-
-.difficulty-level__label {
-	font-size: 28rpx;
-	font-weight: 600;
-	color: #ffffff;
-	margin-bottom: 8rpx;
-	display: block;
-}
-
-.difficulty-level__energy {
-	font-size: 24rpx;
-	color: #ffd700;
-	margin-bottom: 8rpx;
-	display: block;
-}
-
-.difficulty-level__desc {
-	font-size: 22rpx;
-	color: rgba(255,255,255,0.6);
-	display: block;
+.time-slot__range {
+	font-size: 20rpx;
+	color: rgba(255,255,255,0.5);
+	margin-top: 4rpx;
 }
 
 .sheet__action {
@@ -2071,62 +1764,6 @@ export default {
 .sheet__action[disabled] {
 	background: rgba(255,255,255,0.12);
 	color: rgba(255,255,255,0.4);
-}
-
-/* 底部导航栏 */
-.bottom-bar {
-	position: fixed;
-	left: 40rpx;
-	right: 40rpx;
-	bottom: 40rpx;
-	height: 120rpx;
-	border-radius: 60rpx;
-	display: flex;
-	align-items: center;
-	justify-content: space-around;
-	z-index: 3;
-	padding: 0 32rpx;
-	transition: transform 0.3s ease, opacity 0.3s ease;
-}
-
-/* 底部 bar 使用实时动态模糊 */
-.bottom-bar.glass {
-	background: rgba(255, 255, 255, 0.08);
-	border: 1rpx solid rgba(255, 255, 255, 0.12);
-	backdrop-filter: blur(50rpx);
-	-webkit-backdrop-filter: blur(50rpx);
-}
-
-.bottom-bar__item {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 10rpx;
-	font-size: 24rpx;
-	color: rgba(255,255,255,0.62);
-	flex: 1;
-	padding: 10rpx 0;
-	transition: transform 0.25s ease, color 0.25s ease;
-}
-
-.bottom-bar__item--active {
-	color: #ffffff;
-	font-weight: 600;
-	transform: translateY(-6rpx);
-}
-
-.bottom-bar__icon {
-	font-size: 32rpx;
-}
-
-.bottom-bar__label {
-	font-size: 24rpx;
-}
-
-.bottom-bar--hidden {
-	opacity: 0 !important;
-	pointer-events: none !important;
-	transform: translateY(120%) !important;
 }
 
 /* 页面底部装饰 */
@@ -2179,153 +1816,55 @@ export default {
 	}
 }
 
-/* 调试面板 */
-.debug-panel {
+/* 底部导航栏 */
+.bottom-bar {
 	position: fixed;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	padding: 42rpx 40rpx 90rpx;
-	border-radius: 46rpx 46rpx 0 0;
-	z-index: 12;
-	max-height: 85vh;
-	overflow-y: auto;
-	transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease;
-	transform: translateY(120%);
-	pointer-events: none;
-	opacity: 0;
-}
-
-/* 调试面板使用假模糊效果，提升性能 */
-.debug-panel.glass {
-	background: rgba(18, 30, 45, 0.95);
-	box-shadow: 0 26rpx 70rpx rgba(9, 20, 35, 0.55),
-		inset 0 1rpx 0 rgba(255, 255, 255, 0.1);
-}
-
-.debug-panel--open {
-	transform: translateY(0);
-	pointer-events: auto;
-	opacity: 1;
-}
-
-.debug-content {
-	display: flex;
-	flex-direction: column;
-	gap: 32rpx;
-}
-
-.debug-section {
-	padding: 24rpx;
-	background: rgba(255,255,255,0.04);
-	border-radius: 20rpx;
-	border: 1rpx solid rgba(255,255,255,0.08);
-}
-
-.debug-section__title {
-	font-size: 28rpx;
-	font-weight: 600;
-	color: #ffffff;
-	margin-bottom: 20rpx;
-	display: block;
-}
-
-.debug-info {
+	left: 40rpx;
+	right: 40rpx;
+	bottom: 40rpx;
+	height: 120rpx;
+	border-radius: 60rpx;
 	display: flex;
 	align-items: center;
-	margin-bottom: 16rpx;
-	font-size: 24rpx;
+	justify-content: space-around;
+	z-index: 3;
+	padding: 0 32rpx;
+	transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
-.debug-info__label {
-	color: rgba(255,255,255,0.7);
-	margin-right: 12rpx;
+/* 底部 bar 使用实时动态模糊 */
+.bottom-bar.glass {
+	background: rgba(255, 255, 255, 0.08);
+	border: 1rpx solid rgba(255, 255, 255, 0.12);
+	backdrop-filter: blur(50rpx);
+	-webkit-backdrop-filter: blur(50rpx);
 }
 
-.debug-info__value {
-	color: #6ecbff;
-	font-weight: 500;
-}
-
-.debug-info__value--mock {
-	color: #ffd700;
-}
-
-.debug-actions {
+.bottom-bar__item {
 	display: flex;
 	flex-direction: column;
-	gap: 16rpx;
-	margin-top: 20rpx;
-}
-
-.debug-btn-action {
-	height: 72rpx;
-	line-height: 72rpx;
-	background: rgba(110,203,255,0.15);
-	border: 1rpx solid rgba(110,203,255,0.3);
-	border-radius: 16rpx;
-	color: #6ecbff;
-	font-size: 26rpx;
-	transition: all 0.3s ease;
-}
-
-.debug-btn-action::after {
-	border: none;
-}
-
-.debug-btn-action:active {
-	background: rgba(110,203,255,0.25);
-	transform: scale(0.98);
-}
-
-.debug-btn-action[disabled] {
-	opacity: 0.4;
-	pointer-events: none;
-}
-
-.debug-btn-action--reset {
-	background: rgba(255,123,138,0.15);
-	border-color: rgba(255,123,138,0.3);
-	color: #ff7b8a;
-}
-
-.debug-btn-action--reset:active {
-	background: rgba(255,123,138,0.25);
-}
-
-.debug-btn-action--danger {
-	background: rgba(255,90,95,0.15);
-	border-color: rgba(255,90,95,0.3);
-	color: #ff5a5f;
-}
-
-.debug-btn-action--danger:active {
-	background: rgba(255,90,95,0.25);
-}
-
-.debug-quick-dates {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 12rpx;
-}
-
-.debug-quick-date {
-	padding: 16rpx 24rpx;
-	background: rgba(255,255,255,0.06);
-	border: 1rpx solid rgba(255,255,255,0.1);
-	border-radius: 16rpx;
-	transition: all 0.3s ease;
-}
-
-.debug-quick-date:active {
-	background: rgba(110,203,255,0.2);
-	border-color: rgba(110,203,255,0.4);
-	transform: scale(0.95);
-}
-
-.debug-quick-date__label {
+	align-items: center;
+	gap: 10rpx;
 	font-size: 24rpx;
-	color: rgba(255,255,255,0.9);
+	color: rgba(255,255,255,0.62);
+	flex: 1;
+	padding: 10rpx 0;
+	transition: transform 0.25s ease, color 0.25s ease;
 }
+
+.bottom-bar__item--active {
+	color: #ffffff;
+	font-weight: 600;
+	transform: translateY(-6rpx);
+}
+
+.bottom-bar__icon {
+	font-size: 32rpx;
+}
+
+.bottom-bar__label {
+	font-size: 24rpx;
+}
+
 </style>
 

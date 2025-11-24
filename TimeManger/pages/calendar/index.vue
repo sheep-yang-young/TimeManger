@@ -219,6 +219,8 @@ export default {
 		this.activeNav = 'calendar';
 		// 只刷新任务数据，不重新初始化
 		this.loadAllTasks();
+		// 强制更新日历显示（清除缓存，重新计算）
+		this.$forceUpdate();
 		// 每次进入页面重新触发动画
 		this.triggerPageReveal();
 	},

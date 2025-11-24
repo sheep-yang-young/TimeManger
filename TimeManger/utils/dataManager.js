@@ -91,6 +91,12 @@ function migrateOldData() {
 		const userGoals = uni.getStorageSync('userGoals');
 		if (userGoals) migratedData.settings.goals = userGoals;
 		
+		// 迁移用户状态相关数据
+		const hasAgreedUserAgreement = uni.getStorageSync('hasAgreedUserAgreement');
+		const hasCompletedGuide = uni.getStorageSync('hasCompletedGuide');
+		if (hasAgreedUserAgreement !== undefined) migratedData.user.hasAgreedUserAgreement = hasAgreedUserAgreement;
+		if (hasCompletedGuide !== undefined) migratedData.user.hasCompletedGuide = hasCompletedGuide;
+		
 		// 保存迁移后的数据
 		saveAllAppData(migratedData);
 		
@@ -149,6 +155,11 @@ function getDefaultData() {
 				pomodoroGoal: 12,
 				expiredGoal: 4
 			}
+		},
+		// 用户状态相关数据
+		user: {
+			hasAgreedUserAgreement: false,  // 是否已同意用户协议
+			hasCompletedGuide: false       // 是否已完成应用引导
 		}
 	};
 }
@@ -190,7 +201,8 @@ export function clearAllAppData() {
 			'pomodoroCounts', 'pomodoroSettings', 'pomodoroBackgroundState',
 			'habits', 'habitEnergy', 'habitLevel', 'habitExp', 'habitNextLevelExp',
 			'habitCheckins', 'lastCheckinDate', 'habitMockDate',
-			'userGoals'
+			'userGoals',
+			'hasAgreedUserAgreement', 'hasCompletedGuide'
 		];
 		oldKeys.forEach(key => {
 			try {

@@ -5,8 +5,6 @@
 		},
 		onLaunch: function() {
 			console.log('App Launch')
-			// 预加载逻辑已移至启动页面，这里不再执行
-			// 启动页面会在显示时自动开始预加载
 			// 将预加载方法暴露到 app 实例上，方便外部调用
 			const app = this
 			// 延迟绑定，确保 methods 已初始化
@@ -14,6 +12,8 @@
 				if (this.preloadAllPages) {
 					app.preloadAllPages = this.preloadAllPages.bind(app)
 					console.log('✓ 预加载方法已暴露到 app 实例')
+					// 注意：预加载现在由启动页面控制，这里不再自动执行
+					// 启动页面会在合适的时机调用 preloadAllPages()
 				}
 			})
 		},
@@ -68,14 +68,15 @@
 							}, index * 200) // 增加间隔时间，避免同时加载
 						})
 					}, 1000) // 延迟1秒，确保首页完全渲染后再预加载
-				} else {
-					// HarmonyOS 等平台不支持 preloadPage
-					// 不再使用导航方式预加载，避免屏幕闪烁
-					// 应使用 pages.json 中的 preloadRule 配置进行预加载
-					console.log('当前平台不支持 uni.preloadPage')
-					console.log('HarmonyOS 平台请使用 pages.json 中的 preloadRule 配置进行预加载')
-					console.log('已禁用导航方式预加载，避免屏幕闪烁')
-				}
+			} else {
+				// HarmonyOS 等平台不支持 preloadPage
+				// 使用静默导航方式预加载（后台切换，用户无感知）
+				console.log('当前平台不支持 uni.preloadPage，使用静默导航方式预加载')
+				// 延迟执行，确保首页完全加载后再开始
+				setTimeout(() => {
+					this.preloadPagesByNavigation(tabBarPages, normalPages)
+				}, 1500) // 延迟1.5秒，确保首页完全渲染
+			}
 			},
 			
 			/**
@@ -85,14 +86,57 @@
 			 * @param {Array} tabBarPages - tabBar 页面列表
 			 * @param {Array} normalPages - 普通页面列表
 			 */
-			preloadPagesByNavigation(tabBarPages, normalPages) {
-				// 禁用导航方式的预加载，避免屏幕闪烁
-				// HarmonyOS 平台应使用 pages.json 中的 preloadRule 配置进行预加载
-				console.log('已禁用导航方式预加载，避免屏幕闪烁。请使用 pages.json 中的 preloadRule 配置')
-				return
-				
-				// 以下代码已禁用，保留作为参考
-				/*
+		preloadPagesByNavigation(tabBarPages, normalPages) {
+			// 使用静默导航方式预加载页面（适用于不支持 preloadPage 的平台）
+			// 通过快速切换页面来触发页面初始化，然后立即返回首页
+			console.log('开始使用静默导航方式预加载页面...')
+			
+			const startPreload = () => {
+				let currentIndex = 0
+				const preloadNext = () => {
+					if (currentIndex < tabBarPages.length) {
+						const page = tabBarPages[currentIndex]
+						this.preloadTabBarPage(page, () => {
+							currentIndex++
+							setTimeout(() => {
+								preloadNext()
+							}, 300) // 每个页面间隔300ms
+						})
+					} else {
+						if (normalPages.length > 0) {
+							let normalIndex = 0
+							const preloadNormalNext = () => {
+								if (normalIndex < normalPages.length) {
+									const page = normalPages[normalIndex]
+									this.preloadNormalPage(page, () => {
+										normalIndex++
+										setTimeout(() => {
+											preloadNormalNext()
+										}, 300)
+									})
+								} else {
+									console.log('✓ 所有页面预加载完成')
+								}
+							}
+							preloadNormalNext()
+						} else {
+							console.log('✓ 所有页面预加载完成')
+						}
+					}
+				}
+				preloadNext()
+			}
+			
+			if (typeof requestAnimationFrame !== 'undefined') {
+				requestAnimationFrame(() => {
+					setTimeout(startPreload, 200)
+				})
+			} else {
+				setTimeout(startPreload, 200)
+			}
+			
+			// 以下代码已禁用，保留作为参考
+			/*
 				const startPreload = () => {
 					let currentIndex = 0
 					const preloadNext = () => {

@@ -1,6 +1,14 @@
 {
 	"pages": [
 		{
+			"path": "pages/splash/index",
+			"style": {
+				"navigationBarTitleText": "启动中",
+				"navigationStyle": "custom",
+				"enablePullDownRefresh": false
+			}
+		},
+		{
 			"path": "pages/index/index",
 			"style": {
 				"navigationBarTitleText": "今日",
@@ -35,6 +43,16 @@
 		}
 	],
 	"preloadRule": {
+		"pages/splash/index": {
+			"network": "all",
+			"packages": ["__APP__"],
+			"pages": [
+				"pages/index/index",
+				"pages/pomodoro/index",
+				"pages/habit/index",
+				"pages/calendar/index"
+			]
+		},
 		"pages/index/index": {
 			"network": "all",
 			"packages": ["__APP__"],
