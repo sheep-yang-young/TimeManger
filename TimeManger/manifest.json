@@ -82,10 +82,24 @@
                     "signAlg" : "SHA256withECDSA",
                     "storeFile" : "c:\\Users\\Sheep_Young\\AppData\\Roaming\\HBuilder X\\extensions\\launcher\\agc-certs\\1762400485871.p12",
                     "storePassword" : "0000001A6D76478BF4C0AB6FEAFFCF9F63FAE25865969712C09695970E2A7A9CB2DB25DAB6B6DED144F3"
+                },
+                "release" : {
+                    "certpath" : "C:/Users/Sheep_Young/Desktop/TimeManager_Lasted.cer",
+                    "keyAlias" : "TimeManager",
+                    "keyPassword" : "0000001B4DD2F4289F39A50863A5364F72CDCE3C3C2B97213C269F2A411A01616DA35E2777541BDFC79805",
+                    "profile" : "C:/Users/Sheep_Young/Desktop/TimeManager_LastedRelease.p7b",
+                    "signAlg" : "SHA256withECDSA",
+                    "storeFile" : "C:/Users/Sheep_Young/Desktop/TimeManager_Lasted.p12",
+                    "storePassword" : "0000001BC7B8D7DB9A0ED37861A40DD94459B08123D8D78D09C4DBF52EE54090DF606C1BA501A512752436"
                 }
             },
-            "modules" : {
-                "uni-push" : {}
+            "modules" : {},
+            "splashScreens" : {
+                "startWindowIcon" : "static/logo.png"
+            },
+            "icons" : {
+                "foreground" : "static/logo.png",
+                "background" : "static/logo_back.png"
             }
         }
     },

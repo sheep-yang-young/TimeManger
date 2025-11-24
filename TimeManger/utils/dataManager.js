@@ -13,10 +13,22 @@ const DATA_ROOT_KEY = 'timeManager_appData';
 export function getAllAppData() {
 	try {
 		const data = uni.getStorageSync(DATA_ROOT_KEY);
-		if (data && typeof data === 'object') {
-			return data;
+		if (data && typeof data === 'object' && Object.keys(data).length > 0) {
+			// 确保数据结构完整，如果缺少某些字段，使用默认值补充
+			const defaultData = getDefaultData();
+			return {
+				...defaultData,
+				...data,
+				// 确保每个模块都有默认结构
+				tasks: { ...defaultData.tasks, ...(data.tasks || {}) },
+				stats: { ...defaultData.stats, ...(data.stats || {}) },
+				pomodoro: { ...defaultData.pomodoro, ...(data.pomodoro || {}) },
+				habits: { ...defaultData.habits, ...(data.habits || {}) },
+				settings: { ...defaultData.settings, ...(data.settings || {}) },
+				user: { ...defaultData.user, ...(data.user || {}) }
+			};
 		}
-		// 如果统一存储不存在，尝试从旧存储迁移数据
+		// 如果统一存储不存在或为空，尝试从旧存储迁移数据
 		return migrateOldData();
 	} catch (err) {
 		console.error('获取应用数据失败:', err);
@@ -187,6 +199,66 @@ export function updateModuleData(module, data) {
 export function getModuleData(module) {
 	const allData = getAllAppData();
 	return allData[module] || {};
+}
+
+/**
+ * 导出所有应用数据为 JSON 字符串（用于备份和迁移）
+ * @param {Boolean} pretty - 是否格式化输出（默认 true）
+ * @returns {String} JSON 字符串
+ */
+export function exportAllAppData(pretty = true) {
+	try {
+		const allData = getAllAppData();
+		// 移除元数据，只导出实际数据
+		const exportData = {
+			tasks: allData.tasks || {},
+			stats: allData.stats || {},
+			pomodoro: allData.pomodoro || {},
+			habits: allData.habits || {},
+			settings: allData.settings || {},
+			user: allData.user || {}
+		};
+		if (pretty) {
+			return JSON.stringify(exportData, null, 2);
+		}
+		return JSON.stringify(exportData);
+	} catch (err) {
+		console.error('导出应用数据失败:', err);
+		return '{}';
+	}
+}
+
+/**
+ * 导入应用数据（从 JSON 字符串）
+ * @param {String} jsonString - JSON 字符串
+ * @returns {Boolean} 是否导入成功
+ */
+export function importAllAppData(jsonString) {
+	try {
+		const importedData = JSON.parse(jsonString);
+		// 验证数据结构
+		if (!importedData || typeof importedData !== 'object') {
+			return false;
+		}
+		// 合并到现有数据
+		const currentData = getAllAppData();
+		const mergedData = {
+			...currentData,
+			...importedData,
+			// 确保每个模块都正确合并
+			tasks: { ...currentData.tasks, ...(importedData.tasks || {}) },
+			stats: { ...currentData.stats, ...(importedData.stats || {}) },
+			pomodoro: { ...currentData.pomodoro, ...(importedData.pomodoro || {}) },
+			habits: { ...currentData.habits, ...(importedData.habits || {}) },
+			settings: { ...currentData.settings, ...(importedData.settings || {}) },
+			user: { ...currentData.user, ...(importedData.user || {}) }
+		};
+		saveAllAppData(mergedData);
+		return true;
+	} catch (err) {
+		console.error('导入应用数据失败:', err);
+		return false;
+	}
 }
 
 /**

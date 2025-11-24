@@ -1,0 +1,69 @@
+{
+  "app": {
+    "signingConfigs": [
+      {
+        "name": "release",
+        "type": "HarmonyOS",
+        "material": {
+          "certpath": "C:/Users/Sheep_Young/Desktop/TimeManager_Lasted.cer",
+          "keyAlias": "TimeManager",
+          "keyPassword": "0000001B4DD2F4289F39A50863A5364F72CDCE3C3C2B97213C269F2A411A01616DA35E2777541BDFC79805",
+          "profile": "C:/Users/Sheep_Young/Desktop/TimeManager_LastedRelease.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "C:/Users/Sheep_Young/Desktop/TimeManager_Lasted.p12",
+          "storePassword": "0000001BC7B8D7DB9A0ED37861A40DD94459B08123D8D78D09C4DBF52EE54090DF606C1BA501A512752436"
+        }
+      }
+    ],
+    "products": [
+      {
+        "name": "default",
+        "signingConfig": "default",
+        "compatibleSdkVersion": "5.0.0(12)",
+        "compatibleSdkVersionStage": "release",
+        "runtimeOS": "HarmonyOS",
+        "buildOption": {
+          "strictMode": {
+            "caseSensitiveCheck": true,
+            "useNormalizedOHMUrl": true
+          }
+        }
+      },
+      {
+        "name": "release",
+        "signingConfig": "release",
+        "compatibleSdkVersion": "6.0.0(20)",
+        "compatibleSdkVersionStage": "release",
+        "runtimeOS": "HarmonyOS",
+        "buildOption": {
+          "strictMode": {
+            "caseSensitiveCheck": true,
+            "useNormalizedOHMUrl": true
+          }
+        }
+      }
+    ],
+    "buildModeSet": [
+      {
+        "name": "debug"
+      },
+      {
+        "name": "release"
+      }
+    ]
+  },
+  "modules": [
+    {
+      "name": "entry",
+      "srcPath": "./entry",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "release"
+          ]
+        }
+      ]
+    }
+  ]
+}

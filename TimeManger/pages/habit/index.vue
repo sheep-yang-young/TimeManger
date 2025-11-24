@@ -213,6 +213,8 @@
 </template>
 
 <script>
+import { getAllAppData, saveAllAppData, updateModuleData, getModuleData } from '@/utils/dataManager.js';
+
 export default {
 	data() {
 		return {
@@ -225,44 +227,11 @@ export default {
 			lastScrollTop: 0,
 			scrollTimer: null, // 滚动节流定时器
 			heatmapUpdateKey: 0, // 用于触发热力图更新
-			totalEnergy: 850,
-			currentLevel: 5,
-			currentExp: 320,
-			nextLevelExp: 500,
-			habits: [
-				{
-					id: 1,
-					title: '晨间阅读 30 分钟',
-					time: '早晨',
-					energy: 15,
-					streak: 12,
-					checkedToday: true
-				},
-				{
-					id: 2,
-					title: '每天喝 8 杯水',
-					time: '全天',
-					energy: 15,
-					streak: 21,
-					checkedToday: true
-				},
-				{
-					id: 3,
-					title: '晚间冥想 20 分钟',
-					time: '晚间',
-					energy: 15,
-					streak: 7,
-					checkedToday: false
-				},
-				{
-					id: 4,
-					title: '写作练习 1 小时',
-					time: '下午',
-					energy: 15,
-					streak: 5,
-					checkedToday: false
-				}
-			],
+			totalEnergy: 0,
+			currentLevel: 1,
+			currentExp: 0,
+			nextLevelExp: 100,
+			habits: [],
 			form: {
 				title: '',
 				time: '早晨'
@@ -656,59 +625,96 @@ onPageScroll(e) {
 		},
 	saveLocalData() {
 		try {
-			// 保存到旧存储（兼容性）
+			// 使用统一数据管理器保存数据
+			const allData = getAllAppData();
+			
+			// 读取打卡记录
+			let checkins = {};
+			try {
+				checkins = uni.getStorageSync('habitCheckins') || {};
+				// 如果统一存储中有打卡记录，优先使用
+				if (allData.habits && allData.habits.checkins) {
+					checkins = allData.habits.checkins;
+				}
+			} catch (err) {
+				console.warn('读取打卡记录失败', err);
+			}
+			
+			// 更新习惯数据（包括等级和经验，这些会显示在右上角）
+			allData.habits = {
+				list: this.habits,
+				energy: this.totalEnergy,        // 右上角显示的能量值
+				level: this.currentLevel,        // 等级显示
+				exp: this.currentExp,            // 经验值显示
+				nextLevelExp: this.nextLevelExp,  // 下一级所需经验
+				checkins: checkins,
+				lastCheckinDate: this.buildTodayKey(),
+				mockDate: allData.habits?.mockDate || null
+			};
+			
+			// 保存到统一存储
+			saveAllAppData(allData);
+			
+			// 兼容旧存储（保持向后兼容）
 			uni.setStorageSync('habits', this.habits);
 			uni.setStorageSync('habitEnergy', this.totalEnergy);
 			uni.setStorageSync('habitLevel', this.currentLevel);
 			uni.setStorageSync('habitExp', this.currentExp);
 			uni.setStorageSync('habitNextLevelExp', this.nextLevelExp);
 			uni.setStorageSync('lastCheckinDate', this.buildTodayKey());
-			
-			// 统一存储：同步到统一数据结构
-			try {
-				const allData = uni.getStorageSync('timeManager_appData') || {};
-				allData.habits = {
-					list: this.habits,
-					energy: this.totalEnergy,
-					level: this.currentLevel,
-					exp: this.currentExp,
-					nextLevelExp: this.nextLevelExp,
-					checkins: uni.getStorageSync('habitCheckins') || {},
-					lastCheckinDate: this.buildTodayKey(),
-				};
-				allData._version = '1.0.0';
-				allData._lastUpdate = new Date().toISOString();
-				uni.setStorageSync('timeManager_appData', allData);
-			} catch (unifiedErr) {
-				console.warn('同步到统一存储失败:', unifiedErr);
-			}
 		} catch (err) {
 			console.error('保存习惯数据失败:', err);
 		}
 	},
 	loadLocalData() {
 		try {
-			const savedHabits = uni.getStorageSync('habits');
-			const savedEnergy = uni.getStorageSync('habitEnergy');
-			const savedLevel = uni.getStorageSync('habitLevel');
-			const savedExp = uni.getStorageSync('habitExp');
-			const savedNextLevelExp = uni.getStorageSync('habitNextLevelExp');
-		
-		if (savedHabits && Array.isArray(savedHabits)) {
-			this.habits = savedHabits;
-		}
-		if (typeof savedEnergy === 'number') {
-			this.totalEnergy = savedEnergy;
-		}
-		if (typeof savedLevel === 'number') {
-			this.currentLevel = savedLevel;
-		}
-		if (typeof savedExp === 'number') {
-			this.currentExp = savedExp;
-		}
-		if (typeof savedNextLevelExp === 'number') {
-			this.nextLevelExp = savedNextLevelExp;
-		}
+			// 使用统一数据管理器加载数据
+			const allData = getAllAppData();
+			const habitsData = allData.habits || {};
+			
+			// 加载习惯列表
+			if (habitsData.list && Array.isArray(habitsData.list)) {
+				this.habits = habitsData.list;
+			}
+			
+			// 加载等级和经验数据（右上角显示）
+			if (typeof habitsData.energy === 'number') {
+				this.totalEnergy = habitsData.energy;
+			}
+			if (typeof habitsData.level === 'number') {
+				this.currentLevel = habitsData.level;
+			}
+			if (typeof habitsData.exp === 'number') {
+				this.currentExp = habitsData.exp;
+			}
+			if (typeof habitsData.nextLevelExp === 'number') {
+				this.nextLevelExp = habitsData.nextLevelExp;
+			}
+			
+			// 兼容旧存储（如果统一存储中没有数据，尝试从旧存储加载）
+			if (!habitsData.list || habitsData.list.length === 0) {
+				const savedHabits = uni.getStorageSync('habits');
+				const savedEnergy = uni.getStorageSync('habitEnergy');
+				const savedLevel = uni.getStorageSync('habitLevel');
+				const savedExp = uni.getStorageSync('habitExp');
+				const savedNextLevelExp = uni.getStorageSync('habitNextLevelExp');
+				
+				if (savedHabits && Array.isArray(savedHabits)) {
+					this.habits = savedHabits;
+				}
+				if (typeof savedEnergy === 'number') {
+					this.totalEnergy = savedEnergy;
+				}
+				if (typeof savedLevel === 'number') {
+					this.currentLevel = savedLevel;
+				}
+				if (typeof savedExp === 'number') {
+					this.currentExp = savedExp;
+				}
+				if (typeof savedNextLevelExp === 'number') {
+					this.nextLevelExp = savedNextLevelExp;
+				}
+			}
 		} catch (err) {
 			console.error('加载习惯数据失败:', err);
 		}

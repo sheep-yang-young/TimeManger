@@ -102,7 +102,7 @@
 		</view>
 
 	<view class="sheet-mask" v-show="showAddSheet" @tap="closeAddSheet"></view>
-	<view class="sheet glass" :class="{ 'sheet--open': showAddSheet }" v-show="showAddSheet" @touchmove.stop.prevent>
+	<view class="sheet glass" :class="{ 'sheet--open': showAddSheet }" v-show="showAddSheet" @touchmove.stop>
 		<view class="sheet__handle"></view>
 		<view class="sheet__header">
 			<text class="sheet__title">添加今日任务</text>
@@ -141,7 +141,7 @@
 		</view>
 
 	<view class="sheet-mask" v-show="showEditSheet" @tap="closeEditSheet"></view>
-	<view class="sheet glass" :class="{ 'sheet--open': showEditSheet }" v-show="showEditSheet" @touchmove.stop.prevent>
+	<view class="sheet glass" :class="{ 'sheet--open': showEditSheet }" v-show="showEditSheet" @touchmove.stop>
 		<view class="sheet__handle"></view>
 		<view class="sheet__header">
 			<text class="sheet__title">编辑任务</text>
@@ -177,7 +177,7 @@
 
 		<!-- 目标设置弹窗 -->
 		<view class="sheet-mask" v-show="showGoalsSheet" @tap="closeGoalsSheet"></view>
-		<view class="sheet glass" :class="{ 'sheet--open': showGoalsSheet }" v-show="showGoalsSheet" @touchmove.stop.prevent>
+		<view class="sheet glass" :class="{ 'sheet--open': showGoalsSheet }" v-show="showGoalsSheet" @touchmove.stop>
 			<view class="sheet__handle"></view>
 			<view class="sheet__header">
 				<text class="sheet__title">目标设置</text>
@@ -224,7 +224,7 @@
 
 		<!-- 数据备份弹窗 -->
 		<view class="sheet-mask" v-show="showBackupSheet" @tap="closeBackupSheet"></view>
-		<view class="sheet glass" :class="{ 'sheet--open': showBackupSheet }" v-show="showBackupSheet" @touchmove.stop.prevent>
+		<view class="sheet glass" :class="{ 'sheet--open': showBackupSheet }" v-show="showBackupSheet" @touchmove.stop>
 			<view class="sheet__handle"></view>
 			<view class="sheet__header">
 				<text class="sheet__title">数据备份</text>
@@ -233,17 +233,40 @@
 				</view>
 			</view>
 			<view class="backup-content">
-				<view class="backup-placeholder">
-					<text class="backup-placeholder-icon">🚧</text>
-					<text class="backup-placeholder-text">功能正在开发中</text>
-					<text class="backup-placeholder-desc">敬请期待</text>
+				<view class="backup-section">
+					<text class="backup-section-title">数据导出</text>
+					<text class="backup-section-desc">导出所有应用数据为 JSON 格式，方便备份和迁移</text>
+					<button class="backup-btn backup-btn--export" @tap.stop="exportData">
+						<text class="backup-btn-icon">📥</text>
+						<text>导出数据</text>
+					</button>
+				</view>
+				
+				<view class="backup-section">
+					<text class="backup-section-title">数据导入</text>
+					<text class="backup-section-desc">从 JSON 文件导入数据（将合并到现有数据）</text>
+					<button class="backup-btn backup-btn--import" @tap.stop="importData">
+						<text class="backup-btn-icon">📤</text>
+						<text>导入数据</text>
+					</button>
+				</view>
+				
+				<view class="backup-section" v-if="exportedDataJson">
+					<text class="backup-section-title">导出的数据（JSON）</text>
+					<scroll-view class="backup-json-view" scroll-y>
+						<text class="backup-json-text">{{ exportedDataJson }}</text>
+					</scroll-view>
+					<button class="backup-btn backup-btn--copy" @tap.stop="copyExportedData">
+						<text class="backup-btn-icon">📋</text>
+						<text>复制 JSON</text>
+					</button>
 				</view>
 			</view>
 		</view>
 
 		<!-- 反馈建议弹窗 -->
 		<view class="sheet-mask" v-show="showFeedbackSheet" @tap="closeFeedbackSheet"></view>
-		<view class="sheet glass" :class="{ 'sheet--open': showFeedbackSheet }" v-show="showFeedbackSheet" @touchmove.stop.prevent>
+		<view class="sheet glass" :class="{ 'sheet--open': showFeedbackSheet }" v-show="showFeedbackSheet" @touchmove.stop>
 			<view class="sheet__handle"></view>
 			<view class="sheet__header">
 				<text class="sheet__title">反馈建议</text>
@@ -264,7 +287,7 @@
 
 		<!-- 关于应用弹窗 -->
 		<view class="sheet-mask" v-show="showAboutSheet" @tap="closeAboutSheet"></view>
-		<view class="sheet glass" :class="{ 'sheet--open': showAboutSheet }" v-show="showAboutSheet" @touchmove.stop.prevent>
+		<view class="sheet glass" :class="{ 'sheet--open': showAboutSheet }" v-show="showAboutSheet" @touchmove.stop>
 			<view class="sheet__handle"></view>
 			<view class="sheet__header">
 				<text class="sheet__title">关于应用</text>
@@ -290,79 +313,12 @@
 				<view class="about-desc">
 					<text class="about-desc__text">TimeManager 是一款专注于时间管理的应用，帮助您更好地规划时间、完成任务、养成习惯。</text>
 				</view>
-				<view class="about-links">
-					<view class="about-link" @tap.stop="showUserAgreement">
-						<text class="about-link__icon">📄</text>
-						<text class="about-link__text">用户协议</text>
-						<text class="about-link__arrow">></text>
-					</view>
-					<view class="about-link" @tap.stop="showPrivacyPolicy">
-						<text class="about-link__icon">🔒</text>
-						<text class="about-link__text">隐私政策</text>
-						<text class="about-link__arrow">></text>
-					</view>
-				</view>
-			</view>
-		</view>
-		
-		<!-- 用户协议和隐私政策弹窗（分两步） -->
-		<view class="sheet-mask" v-if="showAgreement" @tap.stop></view>
-		<view class="sheet glass" :class="{ 'sheet--open': showAgreement }" v-if="showAgreement" @touchmove.stop.prevent>
-			<view class="sheet__handle"></view>
-			<view class="sheet__header">
-				<text class="sheet__title">{{ currentAgreementStep.title }}</text>
-				<view class="sheet__close" @tap.stop="rejectAgreement" v-if="currentAgreementStepIndex === 0">
-					<text class="sheet__close-icon">✕</text>
-				</view>
-			</view>
-			
-			<scroll-view class="agreement-content" scroll-y>
-				<view class="agreement-text">
-					<template v-for="(para, index) in currentAgreementStep.content" :key="index">
-						<text 
-							class="agreement-section-title" 
-							v-if="para.match(/^[一二三四五六七八九十]+、/)"
-						>
-							{{ para }}
-						</text>
-						<text 
-							class="agreement-paragraph" 
-							v-else
-						>
-							{{ para }}
-						</text>
-					</template>
-				</view>
-			</scroll-view>
-			
-			<!-- 操作按钮 -->
-			<view class="agreement-actions">
-				<button 
-					class="agreement-btn agreement-btn--prev" 
-					v-if="currentAgreementStepIndex > 0"
-					@tap.stop="prevAgreementStep"
-				>
-					<text>上一步</text>
-				</button>
-				<button 
-					class="agreement-btn agreement-btn--cancel" 
-					v-if="currentAgreementStepIndex === 0"
-					@tap.stop="rejectAgreement"
-				>
-					不同意
-				</button>
-				<button 
-					class="agreement-btn agreement-btn--confirm" 
-					@tap.stop="nextAgreementStep"
-				>
-					{{ currentAgreementStepIndex === agreementSteps.length - 1 ? '同意并继续' : '下一步' }}
-				</button>
 			</view>
 		</view>
 		
 		<!-- 应用介绍引导弹窗 -->
 		<view class="sheet-mask" v-if="showGuide" @tap.stop></view>
-		<view class="sheet glass" :class="{ 'sheet--open': showGuide }" v-if="showGuide" @touchmove.stop.prevent>
+		<view class="sheet glass" :class="{ 'sheet--open': showGuide }" v-if="showGuide" @touchmove.stop>
 			<view class="sheet__handle"></view>
 			<view class="sheet__header">
 				<text class="sheet__title">{{ currentGuideStep.title }}</text>
@@ -430,41 +386,11 @@
 				</button>
 			</view>
 		</view>
-		
-		<!-- 用户协议查看弹窗 -->
-		<view class="sheet-mask" v-show="showAgreementView" @tap="closeAgreementView"></view>
-		<view class="sheet glass" :class="{ 'sheet--open': showAgreementView }" v-show="showAgreementView" @touchmove.stop.prevent>
-			<view class="sheet__handle"></view>
-			<view class="sheet__header">
-				<text class="sheet__title">{{ agreementViewTitle }}</text>
-				<view class="sheet__close" @tap.stop="closeAgreementView">
-					<text class="sheet__close-icon">✕</text>
-				</view>
-			</view>
-			<scroll-view class="agreement-content" scroll-y>
-				<view class="agreement-text">
-					<template v-for="(para, index) in agreementViewContent" :key="index">
-						<text 
-							class="agreement-section-title" 
-							v-if="para.match(/^[一二三四五六七八九十]+、/)"
-						>
-							{{ para }}
-						</text>
-						<text 
-							class="agreement-paragraph" 
-							v-else
-						>
-							{{ para }}
-						</text>
-					</template>
-				</view>
-			</scroll-view>
-		</view>
 	</view>
 </template>
 
 <script>
-import { getAllAppData, saveAllAppData, updateModuleData, getModuleData } from '@/utils/dataManager.js';
+import { getAllAppData, saveAllAppData, updateModuleData, getModuleData, exportAllAppData, importAllAppData } from '@/utils/dataManager.js';
 
 export default {
 	data() {
@@ -517,55 +443,8 @@ export default {
 			showBackupSheet: false,
 			showFeedbackSheet: false,
 			showAboutSheet: false,
-			showAgreementView: false, // 是否显示协议/隐私政策查看弹窗
-			agreementViewTitle: '', // 查看弹窗标题
-			agreementViewContent: [], // 查看弹窗内容
-			// 用户协议和引导相关
-			showAgreement: false, // 是否显示用户协议弹窗
-			currentAgreementStepIndex: 0, // 当前协议步骤索引
-			agreementSteps: [
-				{
-					title: '用户协议',
-					content: [
-						'欢迎使用 TimeManager',
-						'在使用本应用前，请您仔细阅读并充分理解以下用户协议。使用本应用即表示您同意遵守以下条款。',
-						'一、服务条款',
-						'1. 本应用提供时间管理相关功能，包括但不限于番茄钟、习惯养成、任务管理等服务。',
-						'2. 您在使用本应用时，应当遵守相关法律法规，不得利用本应用从事违法违规活动。',
-						'3. 我们保留随时修改或中断服务的权利，无需对您或任何第三方负责。',
-						'二、用户责任',
-						'1. 您应当妥善保管账户信息，对账户下的所有行为负责。',
-						'2. 您不得利用本应用进行任何可能损害他人权益或违反法律法规的行为。',
-						'三、免责声明',
-						'1. 本应用提供的服务"按现状"提供，我们不保证服务的及时性、准确性、完整性。',
-						'2. 因使用或无法使用本应用而产生的任何损失，我们不承担责任。',
-						'四、协议修改',
-						'我们有权随时修改本协议，修改后的协议将在应用内公布。继续使用本应用即视为接受修改后的协议。'
-					]
-				},
-				{
-					title: '隐私政策',
-					content: [
-						'隐私政策',
-						'我们重视您的隐私保护，请您仔细阅读以下隐私政策。',
-						'一、数据收集',
-						'1. 我们重视您的隐私保护，您的个人数据将仅用于提供和改进服务。',
-						'2. 本应用会在本地存储您的使用数据（如习惯记录、任务数据等），这些数据仅存储在您的设备上。',
-						'二、数据使用',
-						'1. 您的数据主要用于提供个性化服务，如任务管理、习惯追踪等功能。',
-						'2. 我们不会收集您的个人身份信息，如姓名、手机号、邮箱等。',
-						'三、数据分享',
-						'1. 未经您同意，我们不会向第三方分享您的个人信息。',
-						'2. 您的所有数据都存储在本地设备上，不会上传到服务器。',
-						'四、数据安全',
-						'1. 我们采用本地存储方式，确保您的数据安全。',
-						'2. 您可以随时通过应用内的数据备份功能导出您的数据。',
-						'五、隐私政策修改',
-						'我们有权随时修改本隐私政策，修改后的政策将在应用内公布。继续使用本应用即视为接受修改后的隐私政策。',
-						'如果您不同意以上条款，请退出应用。点击"同意并继续"即表示您已阅读、理解并同意遵守本隐私政策。'
-					]
-				}
-			],
+			exportedDataJson: '', // 导出的 JSON 数据
+			// 引导相关
 			showGuide: false, // 是否显示应用介绍引导
 			currentGuideStepIndex: 0, // 当前引导步骤索引
 			guideSteps: [
@@ -600,42 +479,6 @@ export default {
 					videoPath: '' // 预留：'/static/guide/step5.mp4'
 				}
 			],
-			// 用户协议内容
-			userAgreementContent: [
-				'欢迎使用 TimeManager',
-				'在使用本应用前，请您仔细阅读并充分理解以下用户协议。使用本应用即表示您同意遵守以下条款。',
-				'一、服务条款',
-				'1. 本应用提供时间管理相关功能，包括但不限于番茄钟、习惯养成、任务管理等服务。',
-				'2. 您在使用本应用时，应当遵守相关法律法规，不得利用本应用从事违法违规活动。',
-				'3. 我们保留随时修改或中断服务的权利，无需对您或任何第三方负责。',
-				'二、用户责任',
-				'1. 您应当妥善保管账户信息，对账户下的所有行为负责。',
-				'2. 您不得利用本应用进行任何可能损害他人权益或违反法律法规的行为。',
-				'三、免责声明',
-				'1. 本应用提供的服务"按现状"提供，我们不保证服务的及时性、准确性、完整性。',
-				'2. 因使用或无法使用本应用而产生的任何损失，我们不承担责任。',
-				'四、协议修改',
-				'我们有权随时修改本协议，修改后的协议将在应用内公布。继续使用本应用即视为接受修改后的协议。'
-			],
-			// 隐私政策内容
-			privacyPolicyContent: [
-				'隐私政策',
-				'我们重视您的隐私保护，请您仔细阅读以下隐私政策。',
-				'一、数据收集',
-				'1. 我们重视您的隐私保护，您的个人数据将仅用于提供和改进服务。',
-				'2. 本应用会在本地存储您的使用数据（如习惯记录、任务数据等），这些数据仅存储在您的设备上。',
-				'二、数据使用',
-				'1. 您的数据主要用于提供个性化服务，如任务管理、习惯追踪等功能。',
-				'2. 我们不会收集您的个人身份信息，如姓名、手机号、邮箱等。',
-				'三、数据分享',
-				'1. 未经您同意，我们不会向第三方分享您的个人信息。',
-				'2. 您的所有数据都存储在本地设备上，不会上传到服务器。',
-				'四、数据安全',
-				'1. 我们采用本地存储方式，确保您的数据安全。',
-				'2. 您可以随时通过应用内的数据备份功能导出您的数据。',
-				'五、隐私政策修改',
-				'我们有权随时修改本隐私政策，修改后的政策将在应用内公布。继续使用本应用即视为接受修改后的隐私政策。'
-			],
 			// 目标设置
 			goals: {
 				pomodoroGoal: 12,
@@ -644,12 +487,6 @@ export default {
 		};
 	},
 	computed: {
-		/**
-		 * 获取当前协议步骤
-		 */
-		currentAgreementStep() {
-			return this.agreementSteps[this.currentAgreementStepIndex] || {};
-		},
 		/**
 		 * 获取当前引导步骤
 		 */
@@ -810,6 +647,7 @@ onLoad() {
 	// 先加载数据
 	this.loadLocalData();
 	this.loadGoals();
+	// 只有在没有任何任务数据时才初始化示例任务（包括统一存储和旧存储都没有数据时）
 	this.initializeSampleTasks();
 	this.syncPomodoroCount();
 	this.registerPomodoroListener();
@@ -817,7 +655,7 @@ onLoad() {
 	// 立即显示页面内容（页面可能已预加载）
 	this.pageLoaded = true;
 	
-	// 检测是否是新用户，如果是则显示协议和引导
+	// 检测是否是新用户，如果是则显示引导
 	// 使用延迟确保页面完全渲染后再显示弹窗
 	setTimeout(() => {
 		this.checkIsNewUser();
@@ -1244,9 +1082,144 @@ onPageScroll(e) {
 			// 恢复原始值
 			this.loadGoals();
 		},
-		// 数据备份相关方法（功能已移除，仅保留入口）
+		// 数据备份相关方法
 		closeBackupSheet() {
 			this.showBackupSheet = false;
+			this.exportedDataJson = '';
+		},
+		exportData() {
+			try {
+				// 导出所有数据为格式化的 JSON
+				const jsonString = exportAllAppData(true);
+				this.exportedDataJson = jsonString;
+				
+				uni.showToast({
+					title: '数据导出成功',
+					icon: 'success',
+					duration: 2000
+				});
+			} catch (err) {
+				console.error('导出数据失败:', err);
+				uni.showToast({
+					title: '导出失败',
+					icon: 'none',
+					duration: 2000
+				});
+			}
+		},
+		copyExportedData() {
+			if (!this.exportedDataJson) {
+				uni.showToast({
+					title: '请先导出数据',
+					icon: 'none'
+				});
+				return;
+			}
+			
+			// #ifdef APP-PLUS || APP-HARMONY
+			if (typeof plus !== 'undefined' && plus.setClipboardData) {
+				plus.setClipboardData({
+					data: this.exportedDataJson,
+					success: () => {
+						uni.showToast({
+							title: 'JSON 已复制到剪贴板',
+							icon: 'success'
+						});
+					},
+					fail: () => {
+						uni.showToast({
+							title: '复制失败',
+							icon: 'none'
+						});
+					}
+				});
+			} else {
+				uni.setClipboardData({
+					data: this.exportedDataJson,
+					success: () => {
+						uni.showToast({
+							title: 'JSON 已复制到剪贴板',
+							icon: 'success'
+						});
+					}
+				});
+			}
+			// #endif
+			
+			// #ifdef H5
+			if (navigator.clipboard && navigator.clipboard.writeText) {
+				navigator.clipboard.writeText(this.exportedDataJson).then(() => {
+					uni.showToast({
+						title: 'JSON 已复制到剪贴板',
+						icon: 'success'
+					});
+				}).catch(() => {
+					// 降级方案
+					const textArea = document.createElement('textarea');
+					textArea.value = this.exportedDataJson;
+					textArea.style.position = 'fixed';
+					textArea.style.opacity = '0';
+					document.body.appendChild(textArea);
+					textArea.select();
+					try {
+						document.execCommand('copy');
+						uni.showToast({
+							title: 'JSON 已复制到剪贴板',
+							icon: 'success'
+						});
+					} catch (e) {
+						uni.showToast({
+							title: '复制失败',
+							icon: 'none'
+						});
+					}
+					document.body.removeChild(textArea);
+				});
+			}
+			// #endif
+		},
+		importData() {
+			uni.showModal({
+				title: '导入数据',
+				content: '请将 JSON 数据粘贴到输入框中，数据将合并到现有数据中。',
+				editable: true,
+				placeholderText: '粘贴 JSON 数据...',
+				confirmText: '导入',
+				cancelText: '取消',
+				success: (res) => {
+					if (res.confirm && res.content) {
+						try {
+							const success = importAllAppData(res.content);
+							if (success) {
+								// 重新加载数据
+								this.loadLocalData();
+								
+								uni.showToast({
+									title: '数据导入成功',
+									icon: 'success',
+									duration: 2000
+								});
+								
+								// 刷新页面显示
+								this.$forceUpdate();
+							} else {
+								uni.showToast({
+									title: '导入失败，请检查 JSON 格式',
+									icon: 'none',
+									duration: 3000
+								});
+							}
+						} catch (err) {
+							console.error('导入数据失败:', err);
+							uni.showToast({
+								title: '导入失败',
+								icon: 'none',
+								duration: 2000
+							});
+						}
+					}
+				}
+			});
 		},
 		// 反馈相关方法
 		copyEmail() {
@@ -1348,106 +1321,10 @@ onPageScroll(e) {
 		closeAboutSheet() {
 			this.showAboutSheet = false;
 		},
-		showUserAgreement() {
-			this.agreementViewTitle = '用户协议';
-			this.agreementViewContent = this.userAgreementContent;
-			this.showAgreementView = true;
-		},
-		showPrivacyPolicy() {
-			this.agreementViewTitle = '隐私政策';
-			this.agreementViewContent = this.privacyPolicyContent;
-			this.showAgreementView = true;
-		},
-		closeAgreementView() {
-			this.showAgreementView = false;
-		},
 		/**
 		 * 检测是否是新用户
 		 */
 		checkIsNewUser() {
-			console.log('开始检测新用户状态...');
-			
-			// 开发模式：每次进入都清除存储，视为新用户
-			try {
-				uni.removeStorageSync('hasAgreedUserAgreement');
-				uni.removeStorageSync('hasCompletedGuide');
-				console.log('开发模式：已清除协议和引导状态，每次进入都视为新用户');
-			} catch (e) {
-				console.warn('清除存储失败', e);
-			}
-			
-			// 检查是否已经同意协议
-			try {
-				const hasAgreed = uni.getStorageSync('hasAgreedUserAgreement');
-				console.log('协议同意状态:', hasAgreed);
-				if (!hasAgreed) {
-					// 未同意协议，显示协议弹窗
-					console.log('显示用户协议弹窗');
-					this.showAgreement = true;
-					this.currentAgreementStepIndex = 0;
-					return;
-				}
-			} catch (e) {
-				console.warn('检测协议状态失败', e);
-				// 检测失败，默认显示协议
-				console.log('检测失败，默认显示协议弹窗');
-				this.showAgreement = true;
-				this.currentAgreementStepIndex = 0;
-				return;
-			}
-			
-			// 已同意协议，检查是否完成引导
-			try {
-				const hasCompletedGuide = uni.getStorageSync('hasCompletedGuide');
-				console.log('引导完成状态:', hasCompletedGuide);
-				if (!hasCompletedGuide) {
-					// 未完成引导，显示引导
-					console.log('显示应用介绍引导');
-					this.showGuide = true;
-					this.currentGuideStepIndex = 0;
-				}
-			} catch (e) {
-				console.warn('检测引导状态失败', e);
-			}
-		},
-		/**
-		 * 上一步（协议步骤）
-		 */
-		prevAgreementStep() {
-			if (this.currentAgreementStepIndex > 0) {
-				this.currentAgreementStepIndex--;
-			}
-		},
-		/**
-		 * 下一步（协议步骤）
-		 */
-		nextAgreementStep() {
-			if (this.currentAgreementStepIndex < this.agreementSteps.length - 1) {
-				this.currentAgreementStepIndex++;
-			} else {
-				// 最后一步，完成协议同意
-				this.acceptAgreement();
-			}
-		},
-		/**
-		 * 同意用户协议和隐私政策
-		 */
-		acceptAgreement() {
-			try {
-				// 使用统一数据管理器保存用户协议同意状态
-				updateModuleData('user', {
-					hasAgreedUserAgreement: true
-				});
-				// 兼容旧存储
-				uni.setStorageSync('hasAgreedUserAgreement', true);
-				console.log('用户已同意协议和隐私政策');
-			} catch (e) {
-				console.warn('保存协议状态失败', e);
-			}
-			
-			// 隐藏协议弹窗
-			this.showAgreement = false;
-			
 			// 检查是否完成引导
 			try {
 				const allData = getAllAppData();
@@ -1458,48 +1335,8 @@ onPageScroll(e) {
 					this.currentGuideStepIndex = 0;
 				}
 			} catch (e) {
-				console.warn('检查引导状态失败', e);
+				console.warn('检测引导状态失败', e);
 			}
-		},
-		/**
-		 * 拒绝用户协议，退出应用
-		 */
-		rejectAgreement() {
-			uni.showModal({
-				title: '提示',
-				content: '您需要同意用户协议才能使用本应用。确定要退出吗？',
-				confirmText: '退出',
-				cancelText: '取消',
-				success: (res) => {
-					if (res.confirm) {
-						// 退出应用
-						// #ifdef APP-PLUS
-						try {
-							if (typeof plus !== 'undefined') {
-								plus.runtime.quit();
-							} else {
-								uni.navigateBack({
-									delta: 999
-								});
-							}
-						} catch (e) {
-							console.warn('退出应用失败', e);
-							uni.reLaunch({
-								url: '/pages/index/index'
-							});
-						}
-						// #endif
-						
-						// #ifndef APP-PLUS
-						uni.showToast({
-							title: '请同意用户协议',
-							icon: 'none',
-							duration: 2000
-						});
-						// #endif
-					}
-				}
-			});
 		},
 		/**
 		 * 上一步（引导步骤）
@@ -1531,7 +1368,6 @@ onPageScroll(e) {
 				});
 				// 兼容旧存储
 				uni.setStorageSync('hasCompletedGuide', true);
-				console.log('引导已完成');
 			} catch (e) {
 				console.warn('保存引导状态失败', e);
 			}
@@ -1559,7 +1395,7 @@ onPageScroll(e) {
 		 * 引导视频播放完成
 		 */
 		onGuideVideoEnded() {
-			console.log('引导视频播放完成');
+			// 视频播放完成
 		},
 		/**
 		 * 引导视频播放错误
@@ -1698,68 +1534,68 @@ onPageScroll(e) {
 				}
 			}
 			
-			// 保存到旧存储（兼容性）
-			uni.setStorageSync('taskHistory', taskHistory);
+			// 使用统一数据管理器保存数据
+			const allData = getAllAppData();
 			
-			// 统一存储：保存所有数据到统一结构
-			const allData = {
-				tasks: {
-					today: serializedTasks,
-					history: taskHistory
-				},
-				stats: this.dailyStats,
-				pomodoro: {
-					counts: uni.getStorageSync('pomodoroCounts') || {},
-					settings: uni.getStorageSync('pomodoroSettings') || {},
-					backgroundState: uni.getStorageSync('pomodoroBackgroundState') || null
-				},
-				habits: {
-					list: uni.getStorageSync('habits') || [],
-					energy: uni.getStorageSync('habitEnergy') || 0,
-					level: uni.getStorageSync('habitLevel') || 1,
-					exp: uni.getStorageSync('habitExp') || 0,
-					nextLevelExp: uni.getStorageSync('habitNextLevelExp') || 100,
-					checkins: uni.getStorageSync('habitCheckins') || {},
-					lastCheckinDate: uni.getStorageSync('lastCheckinDate') || null,
-					mockDate: uni.getStorageSync('habitMockDate') || null
-				},
-				settings: {
-					goals: uni.getStorageSync('userGoals') || {}
-				},
-				_version: '1.0.0',
-				_lastUpdate: new Date().toISOString()
+			// 更新任务数据
+			allData.tasks = {
+				today: serializedTasks,
+				history: taskHistory
 			};
-			uni.setStorageSync('timeManager_appData', allData);
+			
+			// 更新统计数据
+			allData.stats = { ...this.dailyStats };
+			
+			// 更新设置（如果存在）
+			if (this.goals) {
+				allData.settings = {
+					...allData.settings,
+					goals: { ...this.goals }
+				};
+			}
+			
+			// 保存到统一存储
+			saveAllAppData(allData);
+			
+			// 兼容旧存储（保持向后兼容）
+			uni.setStorageSync('todayTasks', serializedTasks);
+			uni.setStorageSync('todayStats', this.dailyStats);
+			uni.setStorageSync('taskHistory', taskHistory);
 		} catch (err) {
 			console.error('保存数据失败:', err);
 		}
 	},
-		loadLocalData() {
-			// 使用统一数据管理器加载数据
-			const allData = getAllAppData();
-			
-			// 加载任务数据
-			if (allData.tasks && allData.tasks.today) {
-				this.tasks = allData.tasks.today;
-			}
-			
-			// 加载统计数据
-			if (allData.stats) {
-				this.dailyStats = { ...this.dailyStats, ...allData.stats };
-			}
-			
-			// 加载目标设置
-			if (allData.settings && allData.settings.goals) {
-				this.goals = { ...this.goals, ...allData.settings.goals };
-				this.dailyStats.pomodoroGoal = this.goals.pomodoroGoal;
-				this.dailyStats.expiredGoal = this.goals.expiredGoal;
-			}
-			
-			// 兼容旧存储（如果统一存储中没有数据，尝试从旧存储加载）
-			if (!allData.tasks || !allData.tasks.today || allData.tasks.today.length === 0) {
-				this.loadLocalDataOld();
-			}
-		},
+	loadLocalData() {
+		// 使用统一数据管理器加载数据
+		const allData = getAllAppData();
+		
+		// 加载任务数据
+		if (allData.tasks && allData.tasks.today && Array.isArray(allData.tasks.today)) {
+			this.tasks = allData.tasks.today;
+		}
+		
+		// 加载统计数据
+		if (allData.stats) {
+			this.dailyStats = { ...this.dailyStats, ...allData.stats };
+		}
+		
+		// 加载目标设置
+		if (allData.settings && allData.settings.goals) {
+			this.goals = { ...this.goals, ...allData.settings.goals };
+			this.dailyStats.pomodoroGoal = this.goals.pomodoroGoal;
+			this.dailyStats.expiredGoal = this.goals.expiredGoal;
+		}
+		
+		// 兼容旧存储（如果统一存储中没有数据，尝试从旧存储加载）
+		if (!allData.tasks || !allData.tasks.today || allData.tasks.today.length === 0) {
+			this.loadLocalDataOld();
+		}
+		
+		// 确保任务列表是数组
+		if (!Array.isArray(this.tasks)) {
+			this.tasks = [];
+		}
+	},
 		loadLocalDataOld() {
 		try {
 			const savedTasks = uni.getStorageSync('todayTasks');
@@ -1786,8 +1622,39 @@ onPageScroll(e) {
 		}
 	},
 	initializeSampleTasks() {
-		// Only add sample tasks if there are no existing tasks
-		if (this.tasks.length === 0) {
+		// 检查是否已经有任务数据（包括统一存储和旧存储）
+		const allData = getAllAppData();
+		const hasTasksInUnified = allData.tasks && allData.tasks.today && Array.isArray(allData.tasks.today) && allData.tasks.today.length > 0;
+		
+		// 检查旧存储
+		let hasTasksInOld = false;
+		try {
+			const oldTasks = uni.getStorageSync('todayTasks');
+			hasTasksInOld = oldTasks && Array.isArray(oldTasks) && oldTasks.length > 0;
+		} catch (e) {
+			// 忽略错误
+		}
+		
+		// 检查任务历史中是否有任何任务
+		let hasTasksInHistory = false;
+		try {
+			const taskHistory = uni.getStorageSync('taskHistory');
+			if (taskHistory && typeof taskHistory === 'object') {
+				// 检查是否有任何日期有任务
+				for (const dateKey in taskHistory) {
+					if (Array.isArray(taskHistory[dateKey]) && taskHistory[dateKey].length > 0) {
+						hasTasksInHistory = true;
+						break;
+					}
+				}
+			}
+		} catch (e) {
+			// 忽略错误
+		}
+		
+		// 只有在统一存储、旧存储和任务历史中都没有任何任务数据，且当前任务列表也为空时，才添加示例任务
+		// 这样可以避免在用户删除所有任务后，下次进入又自动添加示例任务
+		if (this.tasks.length === 0 && !hasTasksInUnified && !hasTasksInOld && !hasTasksInHistory) {
 			const todayKey = this.buildTodayKey();
 			const tomorrow = new Date();
 			tomorrow.setDate(tomorrow.getDate() + 1);
@@ -2913,36 +2780,103 @@ scroll-view {
 
 /* 数据备份样式 */
 .backup-content {
-	padding: 60rpx 40rpx;
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	min-height: 300rpx;
-}
-
-.backup-placeholder {
+	padding: 40rpx;
 	display: flex;
 	flex-direction: column;
-	align-items: center;
-	justify-content: center;
+	gap: 40rpx;
 }
 
-.backup-placeholder-icon {
-	font-size: 120rpx;
-	margin-bottom: 32rpx;
-	opacity: 0.6;
+.backup-section {
+	display: flex;
+	flex-direction: column;
+	gap: 16rpx;
 }
 
-.backup-placeholder-text {
-	font-size: 32rpx;
-	font-weight: 500;
+.backup-section-title {
+	font-size: 30rpx;
+	font-weight: 600;
 	color: rgba(255,255,255,0.9);
-	margin-bottom: 16rpx;
 }
 
-.backup-placeholder-desc {
+.backup-section-desc {
 	font-size: 26rpx;
 	color: rgba(255,255,255,0.6);
+	line-height: 1.6;
+}
+
+.backup-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 12rpx;
+	height: 88rpx;
+	border-radius: 24rpx;
+	font-size: 28rpx;
+	font-weight: 600;
+	border: none;
+	transition: all 0.3s ease;
+	margin-top: 8rpx;
+}
+
+.backup-btn::after {
+	border: none;
+}
+
+.backup-btn-icon {
+	font-size: 32rpx;
+}
+
+.backup-btn--export {
+	background: linear-gradient(135deg, rgba(110,203,255,0.9), rgba(200,155,255,0.9));
+	color: #0f1b2b;
+	box-shadow: 0 8rpx 24rpx rgba(110,203,255,0.3);
+}
+
+.backup-btn--export:active {
+	transform: scale(0.98);
+	box-shadow: 0 4rpx 12rpx rgba(110,203,255,0.3);
+}
+
+.backup-btn--import {
+	background: rgba(255,255,255,0.1);
+	color: rgba(255,255,255,0.9);
+	border: 1rpx solid rgba(255,255,255,0.2);
+}
+
+.backup-btn--import:active {
+	background: rgba(255,255,255,0.15);
+	transform: scale(0.98);
+}
+
+.backup-btn--copy {
+	background: rgba(255,255,255,0.08);
+	color: rgba(255,255,255,0.8);
+	border: 1rpx solid rgba(255,255,255,0.15);
+	font-size: 26rpx;
+	height: 72rpx;
+}
+
+.backup-btn--copy:active {
+	background: rgba(255,255,255,0.12);
+	transform: scale(0.98);
+}
+
+.backup-json-view {
+	max-height: 400rpx;
+	background: rgba(0,0,0,0.3);
+	border-radius: 16rpx;
+	padding: 24rpx;
+	border: 1rpx solid rgba(255,255,255,0.1);
+	margin-top: 16rpx;
+}
+
+.backup-json-text {
+	font-size: 22rpx;
+	color: rgba(255,255,255,0.8);
+	font-family: 'Courier New', monospace;
+	line-height: 1.6;
+	white-space: pre-wrap;
+	word-break: break-all;
 }
 
 /* 反馈建议样式 */
@@ -3110,96 +3044,6 @@ scroll-view {
 .about-link__arrow {
 	font-size: 32rpx;
 	color: rgba(255,255,255,0.5);
-}
-
-/* 协议查看弹窗样式 */
-.agreement-content {
-	flex: 1;
-	max-height: calc(85vh - 200rpx);
-	padding: 30rpx 40rpx;
-	overflow-y: auto;
-}
-
-.agreement-text {
-	display: flex;
-	flex-direction: column;
-	gap: 16rpx;
-}
-
-.agreement-section-title {
-	font-size: 28rpx;
-	font-weight: 600;
-	color: #6ecbff;
-	margin-top: 24rpx;
-	display: block;
-}
-
-.agreement-section-title:first-child {
-	margin-top: 0;
-}
-
-.agreement-paragraph {
-	font-size: 26rpx;
-	color: rgba(255, 255, 255, 0.8);
-	line-height: 1.8;
-	display: block;
-	text-align: justify;
-}
-
-/* 协议操作按钮 */
-.agreement-actions {
-	display: flex;
-	gap: 20rpx;
-	padding: 30rpx 40rpx 40rpx;
-	border-top: 1rpx solid rgba(255, 255, 255, 0.1);
-}
-
-.agreement-btn {
-	flex: 1;
-	height: 88rpx;
-	line-height: 88rpx;
-	border-radius: 24rpx;
-	font-size: 30rpx;
-	font-weight: 600;
-	border: none;
-	transition: all 0.3s ease;
-}
-
-.agreement-btn::after {
-	border: none;
-}
-
-.agreement-btn--cancel {
-	background: rgba(255, 255, 255, 0.1);
-	color: rgba(255, 255, 255, 0.8);
-	border: 1rpx solid rgba(255, 255, 255, 0.2);
-}
-
-.agreement-btn--cancel:active {
-	background: rgba(255, 255, 255, 0.15);
-	transform: scale(0.98);
-}
-
-.agreement-btn--prev {
-	background: rgba(255, 255, 255, 0.1);
-	color: rgba(255, 255, 255, 0.8);
-	border: 1rpx solid rgba(255, 255, 255, 0.2);
-}
-
-.agreement-btn--prev:active {
-	background: rgba(255, 255, 255, 0.15);
-	transform: scale(0.98);
-}
-
-.agreement-btn--confirm {
-	background: linear-gradient(135deg, rgba(110,203,255,0.9), rgba(200,155,255,0.9));
-	color: #0f1b2b;
-	box-shadow: 0 8rpx 24rpx rgba(110,203,255,0.3);
-}
-
-.agreement-btn--confirm:active {
-	transform: scale(0.98);
-	box-shadow: 0 4rpx 12rpx rgba(110,203,255,0.3);
 }
 
 /* 引导内容 */
