@@ -33,13 +33,37 @@
 							'calendar__date--disabled': !date.current,
 							'calendar__date--today': date.isToday,
 							'calendar__date--selected': date.selected,
-							'calendar__date--has-tasks': date.hasTasks
+							'calendar__date--has-tasks': date.hasTasks,
+							'calendar__date--has-mood': date.hasMood
 						}"
 						@tap="selectDate(date)"
 						:data-index="index"
 					>
 						<text class="calendar__date-text">{{ date.day }}</text>
 						<view v-show="date.hasTasks" class="calendar__date-dot"></view>
+						<view v-show="date.hasMood" class="calendar__mood-dot" :style="{ background: date.moodColor }"></view>
+					</view>
+				</view>
+			</view>
+
+			<view class="mood-section glass" :class="{ 'glass--active': pageLoaded }">
+				<view class="card-header">
+					<text class="card-title">每日心情</text>
+					<text class="card-sub">{{ hasMoodToday ? '点击像素画编辑' : '记录此刻的心情' }}</text>
+				</view>
+				
+				<view class="pixel-preview-container" @tap="openPixelEditor">
+					<view v-if="hasMoodToday" class="pixel-preview">
+						<view 
+							v-for="(color, index) in currentMoodPixels" 
+							:key="index" 
+							class="pixel-dot"
+							:style="{ backgroundColor: color }"
+						></view>
+					</view>
+					<view v-else class="pixel-empty">
+						<text class="pixel-empty-icon">🎨</text>
+						<text class="pixel-empty-text">绘制今日像素画</text>
 					</view>
 				</view>
 			</view>
@@ -61,19 +85,69 @@
 				</view>
 			</view>
 		</view>
-	</view>
 
-	<!-- 底部导航栏 -->
-	<view class="bottom-bar glass" :class="{ 'glass--active': pageLoaded }">
-		<view
-			class="bottom-bar__item"
-			v-for="item in bottomNavItems"
-			:key="item.key"
-			:class="{ 'bottom-bar__item--active': activeNav === item.key }"
-			@tap="onBottomNavTap(item)"
-		>
-			<text class="bottom-bar__icon">{{ item.icon }}</text>
-			<text class="bottom-bar__label">{{ item.label }}</text>
+		<view class="sheet-mask" v-if="showPixelSheet" @tap="closePixelEditor"></view>
+		<view class="sheet pixel-sheet" :class="{ 'sheet--open': showPixelSheet }" v-if="showPixelSheet" @touchmove.stop.prevent>
+			<view class="sheet__handle"></view>
+			<view class="sheet__header">
+				<text class="sheet__title">心情画板</text>
+				<view class="sheet__actions">
+					<view class="sheet__btn sheet__btn--clear" @tap.stop="clearCanvas">清空</view>
+					<view class="sheet__close" @tap.stop="closePixelEditor">
+						<text class="sheet__close-icon">✕</text>
+					</view>
+				</view>
+			</view>
+			
+			<view class="pixel-editor">
+				<view 
+					class="pixel-grid" 
+					@touchstart="handleTouchDrawStart"
+					@touchmove="handleTouchDrawMove"
+					@touchend="handleTouchDrawEnd"
+				>
+					<view 
+						v-for="(color, index) in editingPixels" 
+						:key="index"
+						class="pixel-cell"
+						:class="{ 'pixel-cell--active': color !== 'transparent' }"
+						:style="{ backgroundColor: color }"
+						:data-index="index"
+						@tap="drawOnePixel(index)"
+					></view>
+				</view>
+				
+				<view class="palette">
+					<view 
+						v-for="color in palette" 
+						:key="color"
+						class="palette-color"
+						:class="{ 
+							'palette-color--selected': selectedColor === color,
+							'palette-color--eraser': color === 'transparent'
+						}"
+						:style="{ backgroundColor: color === 'transparent' ? '' : color }"
+						@tap="selectColor(color)"
+					>
+						<text v-if="color === 'transparent'" class="eraser-icon">✕</text>
+					</view>
+				</view>
+				
+				<button class="save-btn" @tap="savePixelArt">保存心情</button>
+			</view>
+		</view>
+
+		<view class="bottom-bar glass" :class="{ 'glass--active': pageLoaded }">
+			<view
+				class="bottom-bar__item"
+				v-for="item in bottomNavItems"
+				:key="item.key"
+				:class="{ 'bottom-bar__item--active': activeNav === item.key }"
+				@tap="onBottomNavTap(item)"
+			>
+				<text class="bottom-bar__icon">{{ item.icon }}</text>
+				<text class="bottom-bar__label">{{ item.label }}</text>
+			</view>
 		</view>
 	</view>
 </template>
@@ -103,6 +177,15 @@ export default {
 			const dateKey = this.getDateKey(this.selectedDate.year, this.selectedDate.month, this.selectedDate.day);
 			return this.getTasksForDate(dateKey);
 		},
+		// 获取当前选中日期的像素画数据
+		currentMoodPixels() {
+			if (!this.selectedDate) return null;
+			const dateKey = this.getDateKey(this.selectedDate.year, this.selectedDate.month, this.selectedDate.day);
+			return this.moodHistory[dateKey] || null;
+		},
+		hasMoodToday() {
+			return !!this.currentMoodPixels;
+		},
 		calendarDates() {
 			const dates = [];
 			const firstDay = new Date(this.currentYear, this.currentMonth, 1);
@@ -131,7 +214,9 @@ export default {
 					current: false,
 					isToday: false,
 					selected: false,
-					hasTasks: this.hasTasksForDate(key)
+					hasTasks: this.hasTasksForDate(key),
+					hasMood: !!this.moodHistory[key],
+					moodColor: this.getMainMoodColor(key)
 				});
 			}
 			
@@ -152,7 +237,9 @@ export default {
 					current: true,
 					isToday,
 					selected,
-					hasTasks: this.hasTasksForDate(key)
+					hasTasks: this.hasTasksForDate(key),
+					hasMood: !!this.moodHistory[key],
+					moodColor: this.getMainMoodColor(key)
 				});
 			}
 			
@@ -169,7 +256,9 @@ export default {
 					current: false,
 					isToday: false,
 					selected: false,
-					hasTasks: this.hasTasksForDate(key)
+					hasTasks: this.hasTasksForDate(key),
+					hasMood: !!this.moodHistory[key],
+					moodColor: this.getMainMoodColor(key)
 				});
 			}
 			
@@ -184,8 +273,9 @@ export default {
 			selectedDate: null,
 			weekdays: ['日', '一', '二', '三', '四', '五', '六'],
 			allTasks: {},
-			_isInitialized: false,  // 标记是否已初始化
-			scrollTimer: null, // 滚动节流定时器
+			moodHistory: {}, // 存储所有像素画数据 { '2023-10-01': ['#fff', ...] }
+			_isInitialized: false,
+			scrollTimer: null,
 			revealTimer: null,
 			bottomNavItems: [
 				{ key: 'today', label: '今日', icon: '◎', target: '/pages/index/index' },
@@ -193,11 +283,22 @@ export default {
 				{ key: 'tracking', label: '番茄钟', icon: '◴', target: '/pages/pomodoro/index' },
 				{ key: 'habit', label: '习惯', icon: '△', target: '/pages/habit/index' }
 			],
-			activeNav: 'calendar'
+			activeNav: 'calendar',
+			
+			// 像素画相关
+			showPixelSheet: false,
+			editingPixels: [], // 当前编辑中的 8x8 数组 (64个颜色字符串)
+			selectedColor: '#FF6B6B',
+			palette: [
+				'#FF6B6B', '#FF9F43', '#FECA57', '#1DD1A1', 
+				'#48DBFB', '#54A0FF', '#5F27CD', '#FF9FF3',
+				'#C8D6E5', '#576574', '#222F3E', 'transparent'
+			],
+			isDrawing: false, // 标记是否正在触摸绘制中
+			gridRect: null // 缓存grid位置信息
 		};
 	},
 	onLoad() {
-		// 只在首次加载时初始化
 		if (!this._isInitialized) {
 			const today = new Date();
 			this.currentYear = today.getFullYear();
@@ -209,34 +310,27 @@ export default {
 			};
 			
 			this.loadAllTasks();
+			this.loadMoodHistory(); // 加载心情数据
 			this._isInitialized = true;
 		}
-		// 立即显示页面内容（页面可能已预加载）
 		this.triggerPageReveal();
 	},
 	onShow() {
-		// 设置当前激活的导航项
 		this.activeNav = 'calendar';
-		// 只刷新任务数据，不重新初始化
 		this.loadAllTasks();
-		// 强制更新日历显示（清除缓存，重新计算）
-		this.$forceUpdate();
-		// 每次进入页面重新触发动画
+		this.loadMoodHistory();
 		this.triggerPageReveal();
 	},
 	onPageScroll(e) {
-		// 节流处理，减少频繁更新
 		if (!e) return;
 		if (this.scrollTimer) {
 			return;
 		}
 		this.scrollTimer = setTimeout(() => {
-			// 日历页滚动时不更新数据，只做必要的UI更新
 			this.scrollTimer = null;
 		}, 16);
 	},
 	onUnload() {
-		// 清理滚动定时器
 		if (this.scrollTimer) {
 			clearTimeout(this.scrollTimer);
 			this.scrollTimer = null;
@@ -261,16 +355,11 @@ export default {
 			});
 		},
 		goBack() {
-			// 切换到首页
 			uni.switchTab({ url: '/pages/index/index' });
 		},
 		onBottomNavTap(item) {
-			if (item.key === this.activeNav) {
-				return;
-			}
-			if (item.target) {
-				uni.switchTab({ url: item.target });
-			}
+			if (item.key === this.activeNav) return;
+			if (item.target) uni.switchTab({ url: item.target });
 		},
 		prevMonth() {
 			if (this.currentMonth === 0) {
@@ -290,7 +379,6 @@ export default {
 		},
 		selectDate(date) {
 			if (!date.current) {
-				// Switch to the month of the clicked date
 				this.currentYear = date.year;
 				this.currentMonth = date.month;
 			}
@@ -305,48 +393,174 @@ export default {
 			const d = String(day).padStart(2, '0');
 			return `${year}-${m}-${d}`;
 		},
+		
+		// --- 像素画相关逻辑 ---
+		
+		loadMoodHistory() {
+			try {
+				const stored = uni.getStorageSync('moodHistory');
+				if (stored && typeof stored === 'object') {
+					this.moodHistory = stored;
+				} else {
+					this.moodHistory = {};
+				}
+			} catch (err) {
+				console.error('加载心情历史失败:', err);
+			}
+		},
+		
+		// 获取某天心情的主色调（用于日历上的小点）
+		getMainMoodColor(dateKey) {
+			const pixels = this.moodHistory[dateKey];
+			if (!pixels || !Array.isArray(pixels)) return '';
+			
+			// 取中心点颜色作为代表色
+			const centerColor = pixels[27] || pixels[36]; 
+			if (centerColor && centerColor !== 'transparent') return centerColor;
+			
+			return pixels.find(c => c !== 'transparent') || '';
+		},
+		
+		openPixelEditor() {
+			// 初始化画布
+			if (this.hasMoodToday) {
+				// 复制一份数据，避免直接修改
+				this.editingPixels = [...this.currentMoodPixels];
+			} else {
+				// 创建 8x8 = 64 个空像素
+				this.editingPixels = Array(64).fill('transparent');
+			}
+			this.showPixelSheet = true;
+			
+			// 延迟获取grid位置，用于滑动绘制
+			this.$nextTick(() => {
+				setTimeout(() => {
+					const query = uni.createSelectorQuery().in(this);
+					query.select('.pixel-grid').boundingClientRect(data => {
+						if (data) {
+							this.gridRect = data;
+						}
+					}).exec();
+				}, 300); // 等待动画完成
+			});
+		},
+		
+		closePixelEditor() {
+			this.showPixelSheet = false;
+			this.isDrawing = false;
+		},
+		
+		clearCanvas() {
+			this.editingPixels = Array(64).fill('transparent');
+		},
+		
+		selectColor(color) {
+			this.selectedColor = color;
+		},
+		
+		// 触摸绘制逻辑
+		handleTouchDrawStart(e) {
+			this.isDrawing = true;
+			this.paintPixelByEvent(e);
+		},
+		
+		handleTouchDrawMove(e) {
+			if (this.isDrawing) {
+				this.paintPixelByEvent(e);
+			}
+		},
+		
+		handleTouchDrawEnd() {
+			this.isDrawing = false;
+		},
+		
+		paintPixelByEvent(e) {
+			// 如果没有获取到布局信息，或者是点击事件(tap已经处理)，则跳过
+			if (!this.gridRect) return;
+
+			const touch = e.touches[0] || e.changedTouches[0];
+			if (!touch) return;
+			
+			// 计算触摸点相对于 Grid 的位置
+			const x = touch.clientX - this.gridRect.left;
+			const y = touch.clientY - this.gridRect.top;
+			
+			// 计算所在的格子索引 (8x8)
+			const cellSize = this.gridRect.width / 8;
+			
+			if (x >= 0 && x <= this.gridRect.width && y >= 0 && y <= this.gridRect.height) {
+				const col = Math.floor(x / cellSize);
+				const row = Math.floor(y / cellSize);
+				const index = row * 8 + col;
+				
+				if (index >= 0 && index < 64) {
+					// 仅当颜色不同时才更新，减少渲染
+					if (this.editingPixels[index] !== this.selectedColor) {
+						this.editingPixels.splice(index, 1, this.selectedColor);
+					}
+				}
+			}
+		},
+		
+		// 单个像素点击（作为滑动绘制的补充）
+		drawOnePixel(index) {
+			this.editingPixels.splice(index, 1, this.selectedColor);
+		},
+		
+		savePixelArt() {
+			if (!this.selectedDate) return;
+			const dateKey = this.getDateKey(this.selectedDate.year, this.selectedDate.month, this.selectedDate.day);
+			
+			// 检查是否全是透明（空的）
+			const isEmpty = this.editingPixels.every(c => c === 'transparent');
+			
+			if (isEmpty) {
+				// 如果清空了，则删除记录
+				if (this.moodHistory[dateKey]) {
+					delete this.moodHistory[dateKey];
+				}
+			} else {
+				// 保存
+				this.$set(this.moodHistory, dateKey, [...this.editingPixels]);
+			}
+			
+			try {
+				uni.setStorageSync('moodHistory', this.moodHistory);
+				uni.showToast({ title: '心情已保存', icon: 'success' });
+			} catch (err) {
+				console.error('保存失败', err);
+			}
+			
+			this.closePixelEditor();
+		},
+
+		// --- 任务相关逻辑 (保持原样) ---
 		normalizeTaskRecord(task, fallbackDateKey) {
-			if (!task || typeof task !== 'object') {
-				return null;
-			}
+			if (!task || typeof task !== 'object') return null;
 			const normalized = { ...task };
-			if (!normalized.createdDate) {
-				normalized.createdDate = fallbackDateKey;
-			}
+			if (!normalized.createdDate) normalized.createdDate = fallbackDateKey;
 			const needsTarget = !normalized.targetDate || typeof normalized.targetDate !== 'string';
-			if (needsTarget) {
-				normalized.targetDate = this.deriveTargetDateFromDeadline(normalized.deadline, fallbackDateKey);
-			}
-			if (!normalized.targetDate) {
-				normalized.targetDate = null;
-			}
+			if (needsTarget) normalized.targetDate = this.deriveTargetDateFromDeadline(normalized.deadline, fallbackDateKey);
+			if (!normalized.targetDate) normalized.targetDate = null;
 			return normalized;
 		},
 		normalizeTaskHistory(rawHistory) {
 			const normalized = {};
 			const hasOwn = Object.prototype.hasOwnProperty;
 			for (const key in rawHistory) {
-				if (!hasOwn.call(rawHistory, key)) {
-					continue;
-				}
+				if (!hasOwn.call(rawHistory, key)) continue;
 				const tasks = Array.isArray(rawHistory[key]) ? rawHistory[key] : [];
-				normalized[key] = tasks
-					.map(task => this.normalizeTaskRecord(task, key))
-					.filter(Boolean);
+				normalized[key] = tasks.map(task => this.normalizeTaskRecord(task, key)).filter(Boolean);
 			}
 			return normalized;
 		},
 		deriveTargetDateFromDeadline(deadlineText, referenceDateKey) {
-			if (!deadlineText || deadlineText === '无截止时间') {
-				return null;
-			}
+			if (!deadlineText || deadlineText === '无截止时间') return null;
 			const referenceDate = referenceDateKey ? new Date(referenceDateKey) : new Date();
 			referenceDate.setHours(0, 0, 0, 0);
 			const normalizedText = String(deadlineText).trim();
 			const isoMatch = normalizedText.match(/(\d{4})-(\d{2})-(\d{2})/);
-			if (isoMatch) {
-				return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
-			}
+			if (isoMatch) return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
 			const relativeOffsets = [
 				{ keyword: '今天', offset: 0 },
 				{ keyword: '明天', offset: 1 },
@@ -374,35 +588,20 @@ export default {
 			const result = [];
 			const targetDate = new Date(dateKey);
 			targetDate.setHours(0, 0, 0, 0);
-			
-			// Iterate through all dates in taskHistory
 			for (const historyDateKey in this.allTasks) {
 				const tasksOnDate = this.allTasks[historyDateKey];
 				if (!Array.isArray(tasksOnDate)) continue;
-				
 				const historyDate = new Date(historyDateKey);
 				historyDate.setHours(0, 0, 0, 0);
-				
 				for (const task of tasksOnDate) {
-					// Include task if:
-					// 1. Task has a targetDate matching this date
-					// 2. Task has no targetDate (no deadline):
-					//    - If task is done: only show on creation date
-					//    - If task is not done: show on all dates from creation onwards
-					
 					if (task.targetDate === dateKey) {
-						// Task has deadline for this specific date
 						result.push(task);
 					} else if (!task.targetDate) {
-						// Task has no specific target date (无截止时间)
 						let effectiveCreatedDate = historyDate;
-						
 						if (task.createdDate) {
 							effectiveCreatedDate = new Date(task.createdDate);
 							effectiveCreatedDate.setHours(0, 0, 0, 0);
 						}
-						
-						// 如果任务已完成，只在创建日期显示
 						if (task.done) {
 							const createdDateKey = this.getDateKey(
 								effectiveCreatedDate.getFullYear(),
@@ -410,24 +609,16 @@ export default {
 								effectiveCreatedDate.getDate()
 							);
 							if (createdDateKey === dateKey) {
-								// Check if we already added this task (avoid duplicates)
-								if (!result.find(t => t.id === task.id)) {
-									result.push(task);
-								}
+								if (!result.find(t => t.id === task.id)) result.push(task);
 							}
 						} else {
-							// 如果任务未完成，在所有日期（从创建日期开始）都显示
 							if (effectiveCreatedDate <= targetDate) {
-								// Check if we already added this task (avoid duplicates)
-								if (!result.find(t => t.id === task.id)) {
-									result.push(task);
-								}
+								if (!result.find(t => t.id === task.id)) result.push(task);
 							}
 						}
 					}
 				}
 			}
-			
 			return result;
 		},
 		hasTasksForDate(dateKey) {
@@ -442,7 +633,6 @@ export default {
 					this.allTasks = normalized;
 					uni.setStorageSync('taskHistory', normalized);
 				} else {
-					// Migrate today's tasks if they exist
 					const todayTasks = uni.getStorageSync('todayTasks');
 					if (todayTasks && Array.isArray(todayTasks)) {
 						const today = new Date();
@@ -466,18 +656,21 @@ export default {
 export default {
 	methods: {
 		updateCalendar(newValue, oldValue, ownerInstance, instance) {
-			// 使用 renderjs 优化日历渲染，减少重排
 			if (!newValue || !Array.isArray(newValue)) return;
 			requestAnimationFrame(() => {
-				// 批量更新 DOM，减少重排
 				newValue.forEach((date, index) => {
 					const dateEl = ownerInstance.$el.querySelector(`[data-index="${index}"]`);
 					if (dateEl) {
-						// 优化类名更新
 						dateEl.classList.toggle('calendar__date--disabled', !date.current);
 						dateEl.classList.toggle('calendar__date--today', date.isToday);
 						dateEl.classList.toggle('calendar__date--selected', date.selected);
 						dateEl.classList.toggle('calendar__date--has-tasks', date.hasTasks);
+						dateEl.classList.toggle('calendar__date--has-mood', date.hasMood);
+						
+						const moodDot = dateEl.querySelector('.calendar__mood-dot');
+						if (moodDot && date.moodColor) {
+							moodDot.style.background = date.moodColor;
+						}
 					}
 				});
 			});
@@ -701,6 +894,229 @@ export default {
 	background: rgba(200,155,255,0.9);
 }
 
+/* 像素画心情标记点 */
+.calendar__mood-dot {
+	position: absolute;
+	top: 8rpx;
+	right: 8rpx;
+	width: 8rpx;
+	height: 8rpx;
+	border-radius: 50%;
+}
+
+/* 心情卡片样式 */
+.mood-section {
+	padding: 40rpx 32rpx;
+}
+
+.pixel-preview-container {
+	margin-top: 10rpx;
+	background: rgba(0,0,0,0.2);
+	border-radius: 20rpx;
+	padding: 24rpx;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	min-height: 200rpx;
+	border: 1rpx solid rgba(255,255,255,0.05);
+}
+
+.pixel-preview {
+	display: grid;
+	grid-template-columns: repeat(8, 1fr);
+	gap: 2rpx;
+	width: 200rpx;
+	height: 200rpx;
+	padding: 4rpx;
+	background: #1e272e;
+	border-radius: 8rpx;
+}
+
+.pixel-dot {
+	width: 100%;
+	height: 100%;
+}
+
+.pixel-empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 16rpx;
+	opacity: 0.6;
+}
+
+.pixel-empty-icon {
+	font-size: 48rpx;
+}
+
+.pixel-empty-text {
+	font-size: 24rpx;
+	color: rgba(255,255,255,0.7);
+}
+
+/* 像素画弹窗样式 - 独立于 glass，强制不透明 */
+.sheet {
+	position: fixed;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	padding: 42rpx 40rpx 60rpx;
+	border-radius: 46rpx 46rpx 0 0;
+	z-index: 11;
+	transform: translateY(120%);
+	transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+	opacity: 1; /* 强制不透明，修复继承glass的问题 */
+}
+
+/* 专门为像素画弹窗定义的样式，复用 glass 的视觉效果但避免其副作用 */
+.pixel-sheet {
+	background: rgba(18, 30, 45, 0.95);
+	box-shadow: 0 26rpx 70rpx rgba(9, 20, 35, 0.55),
+		inset 0 1rpx 0 rgba(255, 255, 255, 0.1);
+}
+
+.sheet-mask {
+	position: fixed;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+	background: rgba(10,17,28,0.85);
+	z-index: 10;
+	animation: fade-in 0.3s ease;
+}
+
+.sheet--open {
+	transform: translateY(0);
+}
+
+.sheet__header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 40rpx;
+}
+
+.sheet__handle {
+	width: 80rpx;
+	height: 8rpx;
+	background: rgba(255,255,255,0.2);
+	border-radius: 4rpx;
+	margin: -20rpx auto 30rpx;
+}
+
+.sheet__actions {
+	display: flex;
+	align-items: center;
+	gap: 20rpx;
+}
+
+.sheet__btn {
+	padding: 8rpx 20rpx;
+	font-size: 24rpx;
+	color: rgba(255,255,255,0.6);
+	background: rgba(255,255,255,0.1);
+	border-radius: 12rpx;
+}
+
+.sheet__close {
+	width: 60rpx;
+	height: 60rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(255,255,255,0.08);
+	border-radius: 50%;
+}
+
+.sheet__close-icon {
+	font-size: 32rpx;
+	color: rgba(255,255,255,0.8);
+}
+
+/* 像素编辑器样式 */
+.pixel-editor {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 40rpx;
+}
+
+.pixel-grid {
+	display: grid;
+	grid-template-columns: repeat(8, 1fr);
+	gap: 2rpx;
+	width: 560rpx;
+	height: 560rpx;
+	background: #2f3640;
+	padding: 4rpx;
+	border-radius: 12rpx;
+	box-shadow: 0 10rpx 30rpx rgba(0,0,0,0.3);
+}
+
+.pixel-cell {
+	background: #1e272e;
+	transition: background 0.1s;
+	border-radius: 2rpx;
+}
+
+.pixel-cell--active {
+	box-shadow: inset 0 0 4rpx rgba(0,0,0,0.1);
+}
+
+.palette {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 24rpx;
+	width: 100%;
+}
+
+.palette-color {
+	width: 64rpx;
+	height: 64rpx;
+	border-radius: 50%;
+	border: 4rpx solid rgba(255,255,255,0.1);
+	transition: transform 0.2s, border-color 0.2s;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.palette-color--selected {
+	transform: scale(1.15);
+	border-color: #ffffff;
+	box-shadow: 0 0 16rpx rgba(255,255,255,0.2);
+}
+
+.palette-color--eraser {
+	background: repeating-linear-gradient(
+		45deg,
+		#353b48,
+		#353b48 10rpx,
+		#2f3640 10rpx,
+		#2f3640 20rpx
+	);
+	border-color: rgba(255,255,255,0.2);
+}
+
+.eraser-icon {
+	font-size: 28rpx;
+	color: rgba(255,255,255,0.6);
+}
+
+.save-btn {
+	width: 100%;
+	height: 90rpx;
+	line-height: 90rpx;
+	background: linear-gradient(135deg, #1dd1a1, #10ac84);
+	color: #fff;
+	font-weight: 600;
+	border-radius: 24rpx;
+	font-size: 32rpx;
+	margin-top: 20rpx;
+}
+
 .tasks {
 	padding: 40rpx 32rpx 32rpx;
 }
@@ -865,6 +1281,11 @@ export default {
 	}
 }
 
+@keyframes fade-in {
+	0% { opacity: 0; }
+	100% { opacity: 1; }
+}
+
 @keyframes calendar-pop {
 	0% {
 		opacity: 0;
@@ -901,7 +1322,8 @@ export default {
 	.glass,
 	.task,
 	.calendar__nav,
-	.bottom-bar {
+	.bottom-bar,
+	.sheet {
 		transition-duration: 0.01ms !important;
 	}
 }
