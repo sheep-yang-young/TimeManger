@@ -8,7 +8,7 @@
 			<view class="top-bar__right"></view>
 		</view>
 
-		<view class="main">
+		<view class="main-container">
 			<view class="calendar glass" :class="{ 'glass--active': pageLoaded }">
 				<view class="calendar__header">
 					<view class="calendar__nav" @tap="prevMonth">
@@ -46,44 +46,109 @@
 				</view>
 			</view>
 
-			<view class="mood-section glass" :class="{ 'glass--active': pageLoaded }">
-				<view class="card-header">
-					<text class="card-title">每日心情</text>
-					<text class="card-sub">{{ hasMoodToday ? '点击像素画编辑' : '记录此刻的心情' }}</text>
+			<view class="tabs glass" :class="{ 'glass--active': pageLoaded }">
+				<view 
+					class="tab-item" 
+					:class="{ 'tab-item--active': currentTab === 'tasks' }"
+					@tap="currentTab = 'tasks'"
+				>
+					<text class="tab-item__text">📝 任务</text>
+					<view class="tab-item__indicator"></view>
 				</view>
-				
-				<view class="pixel-preview-container" @tap="openPixelEditor">
-					<view v-if="hasMoodToday" class="pixel-preview">
-						<view 
-							v-for="(color, index) in currentMoodPixels" 
-							:key="index" 
-							class="pixel-dot"
-							:style="{ backgroundColor: color }"
-						></view>
-					</view>
-					<view v-else class="pixel-empty">
-						<text class="pixel-empty-icon">🎨</text>
-						<text class="pixel-empty-text">绘制今日像素画</text>
-					</view>
+				<view 
+					class="tab-item" 
+					:class="{ 'tab-item--active': currentTab === 'mood' }"
+					@tap="currentTab = 'mood'"
+				>
+					<text class="tab-item__text">🎨 心情</text>
+					<view class="tab-item__indicator"></view>
+				</view>
+				<view 
+					class="tab-item" 
+					:class="{ 'tab-item--active': currentTab === 'anniversary' }"
+					@tap="currentTab = 'anniversary'"
+				>
+					<text class="tab-item__text">📅 纪念日</text>
+					<view class="tab-item__indicator"></view>
 				</view>
 			</view>
 
-			<view class="tasks glass" :class="{ 'glass--active': pageLoaded }">
-				<view class="card-header">
-					<text class="card-title">{{ selectedDateLabel }}</text>
-					<text class="card-sub">{{ tasksSummary }}</text>
-				</view>
-				<view v-for="task in selectedDateTasks" :key="task.id" class="task" :class="{ 'task--done': task.done }">
-					<view class="task__info">
-						<text class="task__title" :class="{ 'task__title--strikethrough': task.done }">{{ task.title }}</text>
-						<text class="task__deadline" :class="{ 'task__deadline--strikethrough': task.done }">{{ task.deadline }}</text>
+			<scroll-view scroll-y class="content-area">
+				
+				<view v-if="currentTab === 'tasks'" class="tab-content tasks-view">
+					<view class="section-header">
+						<text class="section-title">{{ selectedDateLabel }}</text>
+						<text class="section-sub">{{ tasksSummary }}</text>
 					</view>
-					<view v-if="task.done" class="task__check">✓</view>
+					
+					<view v-if="selectedDateTasks.length">
+						<view v-for="task in selectedDateTasks" :key="task.id" class="task glass-lite" :class="{ 'task--done': task.done }">
+							<view class="task__info">
+								<text class="task__title" :class="{ 'task__title--strikethrough': task.done }">{{ task.title }}</text>
+								<text class="task__deadline" :class="{ 'task__deadline--strikethrough': task.done }">{{ task.deadline }}</text>
+							</view>
+							<view v-if="task.done" class="task__check">✓</view>
+						</view>
+					</view>
+					<view v-else class="empty-state">
+						<text class="empty-icon">📭</text>
+						<text class="empty-text">该日期暂无任务</text>
+					</view>
 				</view>
-				<view v-if="!selectedDateTasks.length" class="empty">
-					<text class="empty__tip">该日期没有任务记录</text>
+
+				<view v-if="currentTab === 'mood'" class="tab-content mood-view">
+					<view class="section-header">
+						<text class="section-title">像素心情</text>
+						<text class="section-sub">{{ hasMoodToday ? '点击画布编辑' : '记录此刻的心情' }}</text>
+					</view>
+					
+					<view class="pixel-card glass-lite" @tap="openPixelEditor">
+						<view class="pixel-card__content">
+							<view v-if="hasMoodToday" class="pixel-preview" :style="previewGridStyle">
+								<view 
+									v-for="(color, index) in currentMoodPixels" 
+									:key="index" 
+									class="pixel-dot"
+									:style="{ backgroundColor: color }"
+								></view>
+							</view>
+							<view v-else class="pixel-placeholder">
+								<text class="pixel-plus">+</text>
+								<text class="pixel-hint">点击绘制 16x16 像素画</text>
+							</view>
+						</view>
+					</view>
 				</view>
-			</view>
+
+				<view v-if="currentTab === 'anniversary'" class="tab-content anni-view">
+					<view class="section-header">
+						<text class="section-title">重要日子</text>
+						<view class="add-btn-mini" @tap="openAnniversaryManager">
+							<text>+ 添加/管理</text>
+						</view>
+					</view>
+					
+					<view v-if="anniversaries.length">
+						<view v-for="item in anniversaries" :key="item.id" class="anni-card glass-lite" @tap="openSharePreview(item)">
+							<view class="anni-card__main">
+								<text class="anni-card__title">{{ item.title }}</text>
+								<text class="anni-card__date">{{ item.date }}</text>
+							</view>
+							<view class="anni-card__badge" :class="item.days >= 0 ? 'future' : 'past'">
+								<text class="anni-num">{{ Math.abs(item.days) }}</text>
+								<text class="anni-unit">天</text>
+								<text class="anni-label">{{ item.days >= 0 ? '还有' : '已过' }}</text>
+							</view>
+						</view>
+					</view>
+					<view v-else class="empty-state" @tap="openAnniversaryManager">
+						<text class="empty-icon">✨</text>
+						<text class="empty-text">记录第一个纪念日</text>
+					</view>
+				</view>
+				
+				<view style="height: 160rpx;"></view>
+			</scroll-view>
 		</view>
 
 		<view class="sheet-mask" v-if="showPixelSheet" @tap="closePixelEditor"></view>
@@ -93,22 +158,16 @@
 				<text class="sheet__title">心情画板</text>
 				<view class="sheet__actions">
 					<view class="sheet__btn sheet__btn--clear" @tap.stop="clearCanvas">清空</view>
-					<view class="sheet__close" @tap.stop="closePixelEditor">
-						<text class="sheet__close-icon">✕</text>
-					</view>
+					<view class="sheet__close" @tap.stop="closePixelEditor">✕</view>
 				</view>
 			</view>
-			
 			<view class="pixel-editor">
-				<view 
-					class="pixel-grid" 
+				<view class="pixel-grid" 
 					@touchstart="handleTouchDrawStart"
 					@touchmove="handleTouchDrawMove"
 					@touchend="handleTouchDrawEnd"
 				>
-					<view 
-						v-for="(color, index) in editingPixels" 
-						:key="index"
+					<view v-for="(color, index) in editingPixels" :key="index"
 						class="pixel-cell"
 						:class="{ 'pixel-cell--active': color !== 'transparent' }"
 						:style="{ backgroundColor: color }"
@@ -116,32 +175,63 @@
 						@tap="drawOnePixel(index)"
 					></view>
 				</view>
-				
 				<view class="palette">
-					<view 
-						v-for="color in palette" 
-						:key="color"
+					<view v-for="color in palette" :key="color"
 						class="palette-color"
-						:class="{ 
-							'palette-color--selected': selectedColor === color,
-							'palette-color--eraser': color === 'transparent'
-						}"
+						:class="{ 'palette-color--selected': selectedColor === color, 'palette-color--eraser': color === 'transparent' }"
 						:style="{ backgroundColor: color === 'transparent' ? '' : color }"
 						@tap="selectColor(color)"
 					>
 						<text v-if="color === 'transparent'" class="eraser-icon">✕</text>
 					</view>
 				</view>
-				
-				<button class="save-btn" @tap="savePixelArt">保存心情</button>
+				<button class="action-btn" @tap="savePixelArt">保存心情</button>
 			</view>
 		</view>
 
+		<view class="sheet-mask" v-if="showAnniversarySheet" @tap="closeAnniversaryManager"></view>
+		<view class="sheet glass-sheet" :class="{ 'sheet--open': showAnniversarySheet }" v-if="showAnniversarySheet">
+			<view class="sheet__handle"></view>
+			<view class="sheet__header">
+				<text class="sheet__title">管理纪念日</text>
+				<view class="sheet__close" @tap.stop="closeAnniversaryManager">✕</view>
+			</view>
+			
+			<view class="anni-form">
+				<input class="anni-input" placeholder="事件名称 (如: 恋人生日)" v-model="newAnni.title" />
+				<picker mode="date" :value="newAnni.date" @change="onAnniDateChange">
+					<view class="anni-input anni-input--date">
+						{{ newAnni.date || '选择日期' }}
+					</view>
+				</picker>
+				<button class="action-btn action-btn--small" @tap="addAnniversary" :disabled="!newAnni.title || !newAnni.date">添加</button>
+			</view>
+			
+			<scroll-view scroll-y class="anni-list-scroll">
+				<view v-for="item in anniversaries" :key="item.id" class="anni-item-row">
+					<view class="anni-row__info">
+						<text class="anni-row__title">{{ item.title }}</text>
+						<text class="anni-row__date">{{ item.date }}</text>
+					</view>
+					<view class="anni-row__del" @tap.stop="deleteAnniversary(item.id)">删除</view>
+				</view>
+			</scroll-view>
+		</view>
+
+		<view class="sheet-mask" v-if="showShareSheet" @tap="closeShareSheet"></view>
+		<view class="sheet glass-sheet share-sheet" :class="{ 'sheet--open': showShareSheet }" v-if="showShareSheet">
+			<view class="sheet__header">
+				<text class="sheet__title">分享卡片</text>
+				<view class="sheet__close" @tap.stop="closeShareSheet">✕</view>
+			</view>
+			<view class="canvas-wrapper">
+				<canvas canvas-id="shareCanvas" class="share-canvas"></canvas>
+			</view>
+			<button class="action-btn" @tap="saveImageToPhotos">保存到相册</button>
+		</view>
+
 		<view class="bottom-bar glass" :class="{ 'glass--active': pageLoaded }">
-			<view
-				class="bottom-bar__item"
-				v-for="item in bottomNavItems"
-				:key="item.key"
+			<view class="bottom-bar__item" v-for="item in bottomNavItems" :key="item.key"
 				:class="{ 'bottom-bar__item--active': activeNav === item.key }"
 				@tap="onBottomNavTap(item)"
 			>
@@ -154,16 +244,56 @@
 
 <script>
 export default {
+	data() {
+		return {
+			pageLoaded: false,
+			currentTab: 'tasks', // 当前选中的 Tab: 'tasks', 'mood', 'anniversary'
+			currentYear: 0,
+			currentMonth: 0,
+			selectedDate: null,
+			weekdays: ['日', '一', '二', '三', '四', '五', '六'],
+			
+			// 数据
+			allTasks: {},
+			moodHistory: {},
+			anniversaries: [],
+			newAnni: { title: '', date: '' },
+			
+			// 像素画编辑器状态
+			showPixelSheet: false,
+			gridSize: 16,
+			editingPixels: [],
+			selectedColor: '#FF6B6B',
+			palette: [
+				'#FF6B6B', '#FF9F43', '#FECA57', '#1DD1A1', 
+				'#48DBFB', '#54A0FF', '#5F27CD', '#FF9FF3',
+				'#C8D6E5', '#576574', '#222F3E', 'transparent'
+			],
+			isDrawing: false,
+			gridRect: null,
+			
+			// 弹窗状态
+			showAnniversarySheet: false,
+			showShareSheet: false,
+			
+			bottomNavItems: [
+				{ key: 'today', label: '今日', icon: '◎', target: '/pages/index/index' },
+				{ key: 'calendar', label: '日历', icon: '◉', target: '/pages/calendar/index' },
+				{ key: 'tracking', label: '番茄钟', icon: '◴', target: '/pages/pomodoro/index' },
+				{ key: 'habit', label: '习惯', icon: '△', target: '/pages/habit/index' }
+			],
+			activeNav: 'calendar',
+			_isInitialized: false,
+			revealTimer: null,
+		};
+	},
 	computed: {
 		currentMonthLabel() {
 			return `${this.currentYear}年${this.currentMonth + 1}月`;
 		},
 		selectedDateLabel() {
-			if (!this.selectedDate) {
-				return '未选择日期';
-			}
-			const date = this.selectedDate;
-			return `${date.year}年${date.month + 1}月${date.day}日`;
+			if (!this.selectedDate) return '未选择日期';
+			return `${this.selectedDate.year}年${this.selectedDate.month + 1}月${this.selectedDate.day}日`;
 		},
 		tasksSummary() {
 			const tasks = this.selectedDateTasks;
@@ -171,13 +301,10 @@ export default {
 			return `${completed} / ${tasks.length} 已完成`;
 		},
 		selectedDateTasks() {
-			if (!this.selectedDate) {
-				return [];
-			}
+			if (!this.selectedDate) return [];
 			const dateKey = this.getDateKey(this.selectedDate.year, this.selectedDate.month, this.selectedDate.day);
 			return this.getTasksForDate(dateKey);
 		},
-		// 获取当前选中日期的像素画数据
 		currentMoodPixels() {
 			if (!this.selectedDate) return null;
 			const dateKey = this.getDateKey(this.selectedDate.year, this.selectedDate.month, this.selectedDate.day);
@@ -186,117 +313,40 @@ export default {
 		hasMoodToday() {
 			return !!this.currentMoodPixels;
 		},
+		previewGridStyle() {
+			if (!this.currentMoodPixels) return '';
+			const size = Math.sqrt(this.currentMoodPixels.length);
+			return `grid-template-columns: repeat(${size}, 1fr)`;
+		},
 		calendarDates() {
 			const dates = [];
 			const firstDay = new Date(this.currentYear, this.currentMonth, 1);
-			const lastDay = new Date(this.currentYear, this.currentMonth + 1, 0);
-			const prevMonthLastDay = new Date(this.currentYear, this.currentMonth, 0);
-			
+			const daysInMonth = new Date(this.currentYear, this.currentMonth + 1, 0).getDate();
+			const daysInPrevMonth = new Date(this.currentYear, this.currentMonth, 0).getDate();
 			const firstDayOfWeek = firstDay.getDay();
-			const daysInMonth = lastDay.getDate();
-			const daysInPrevMonth = prevMonthLastDay.getDate();
 			
 			const today = new Date();
-			const todayYear = today.getFullYear();
-			const todayMonth = today.getMonth();
-			const todayDay = today.getDate();
 			
-			// Previous month dates
+			// 上月
 			for (let i = firstDayOfWeek - 1; i >= 0; i--) {
 				const day = daysInPrevMonth - i;
 				const year = this.currentMonth === 0 ? this.currentYear - 1 : this.currentYear;
 				const month = this.currentMonth === 0 ? 11 : this.currentMonth - 1;
-				const key = this.getDateKey(year, month, day);
-				dates.push({
-					day,
-					year,
-					month,
-					current: false,
-					isToday: false,
-					selected: false,
-					hasTasks: this.hasTasksForDate(key),
-					hasMood: !!this.moodHistory[key],
-					moodColor: this.getMainMoodColor(key)
-				});
+				dates.push(this.createDateObj(year, month, day, false, today));
 			}
-			
-			// Current month dates
+			// 当月
 			for (let day = 1; day <= daysInMonth; day++) {
-				const key = this.getDateKey(this.currentYear, this.currentMonth, day);
-				const isToday = this.currentYear === todayYear && 
-								this.currentMonth === todayMonth && 
-								day === todayDay;
-				const selected = this.selectedDate && 
-								 this.selectedDate.year === this.currentYear &&
-								 this.selectedDate.month === this.currentMonth &&
-								 this.selectedDate.day === day;
-				dates.push({
-					day,
-					year: this.currentYear,
-					month: this.currentMonth,
-					current: true,
-					isToday,
-					selected,
-					hasTasks: this.hasTasksForDate(key),
-					hasMood: !!this.moodHistory[key],
-					moodColor: this.getMainMoodColor(key)
-				});
+				dates.push(this.createDateObj(this.currentYear, this.currentMonth, day, true, today));
 			}
-			
-			// Next month dates
+			// 下月
 			const remainingDays = 42 - dates.length;
 			for (let day = 1; day <= remainingDays; day++) {
 				const year = this.currentMonth === 11 ? this.currentYear + 1 : this.currentYear;
 				const month = this.currentMonth === 11 ? 0 : this.currentMonth + 1;
-				const key = this.getDateKey(year, month, day);
-				dates.push({
-					day,
-					year,
-					month,
-					current: false,
-					isToday: false,
-					selected: false,
-					hasTasks: this.hasTasksForDate(key),
-					hasMood: !!this.moodHistory[key],
-					moodColor: this.getMainMoodColor(key)
-				});
+				dates.push(this.createDateObj(year, month, day, false, today));
 			}
-			
 			return dates;
 		}
-	},
-	data() {
-		return {
-			pageLoaded: false,
-			currentYear: 0,
-			currentMonth: 0,
-			selectedDate: null,
-			weekdays: ['日', '一', '二', '三', '四', '五', '六'],
-			allTasks: {},
-			moodHistory: {}, // 存储所有像素画数据 { '2023-10-01': ['#fff', ...] }
-			_isInitialized: false,
-			scrollTimer: null,
-			revealTimer: null,
-			bottomNavItems: [
-				{ key: 'today', label: '今日', icon: '◎', target: '/pages/index/index' },
-				{ key: 'calendar', label: '日历', icon: '◉', target: '/pages/calendar/index' },
-				{ key: 'tracking', label: '番茄钟', icon: '◴', target: '/pages/pomodoro/index' },
-				{ key: 'habit', label: '习惯', icon: '△', target: '/pages/habit/index' }
-			],
-			activeNav: 'calendar',
-			
-			// 像素画相关
-			showPixelSheet: false,
-			editingPixels: [], // 当前编辑中的 8x8 数组 (64个颜色字符串)
-			selectedColor: '#FF6B6B',
-			palette: [
-				'#FF6B6B', '#FF9F43', '#FECA57', '#1DD1A1', 
-				'#48DBFB', '#54A0FF', '#5F27CD', '#FF9FF3',
-				'#C8D6E5', '#576574', '#222F3E', 'transparent'
-			],
-			isDrawing: false, // 标记是否正在触摸绘制中
-			gridRect: null // 缓存grid位置信息
-		};
 	},
 	onLoad() {
 		if (!this._isInitialized) {
@@ -308,9 +358,9 @@ export default {
 				month: today.getMonth(),
 				day: today.getDate()
 			};
-			
 			this.loadAllTasks();
-			this.loadMoodHistory(); // 加载心情数据
+			this.loadMoodHistory();
+			this.loadAnniversaries();
 			this._isInitialized = true;
 		}
 		this.triggerPageReveal();
@@ -319,33 +369,24 @@ export default {
 		this.activeNav = 'calendar';
 		this.loadAllTasks();
 		this.loadMoodHistory();
+		this.loadAnniversaries();
 		this.triggerPageReveal();
 	},
-	onPageScroll(e) {
-		if (!e) return;
-		if (this.scrollTimer) {
-			return;
-		}
-		this.scrollTimer = setTimeout(() => {
-			this.scrollTimer = null;
-		}, 16);
-	},
-	onUnload() {
-		if (this.scrollTimer) {
-			clearTimeout(this.scrollTimer);
-			this.scrollTimer = null;
-		}
-		if (this.revealTimer) {
-			clearTimeout(this.revealTimer);
-			this.revealTimer = null;
-		}
-	},
 	methods: {
+		createDateObj(year, month, day, current, today) {
+			const key = this.getDateKey(year, month, day);
+			const isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === day;
+			const selected = this.selectedDate && this.selectedDate.year === year && this.selectedDate.month === month && this.selectedDate.day === day;
+			
+			return {
+				day, year, month, current, isToday, selected,
+				hasTasks: this.hasTasksForDate(key),
+				hasMood: !!this.moodHistory[key],
+				moodColor: this.getMainMoodColor(key)
+			};
+		},
 		triggerPageReveal() {
-			if (this.revealTimer) {
-				clearTimeout(this.revealTimer);
-				this.revealTimer = null;
-			}
+			if (this.revealTimer) clearTimeout(this.revealTimer);
 			this.pageLoaded = false;
 			this.$nextTick(() => {
 				this.revealTimer = setTimeout(() => {
@@ -354,298 +395,270 @@ export default {
 				}, 30);
 			});
 		},
-		goBack() {
-			uni.switchTab({ url: '/pages/index/index' });
-		},
+		goBack() { uni.switchTab({ url: '/pages/index/index' }); },
 		onBottomNavTap(item) {
 			if (item.key === this.activeNav) return;
 			if (item.target) uni.switchTab({ url: item.target });
 		},
 		prevMonth() {
-			if (this.currentMonth === 0) {
-				this.currentMonth = 11;
-				this.currentYear -= 1;
-			} else {
-				this.currentMonth -= 1;
-			}
+			if (this.currentMonth === 0) { this.currentMonth = 11; this.currentYear -= 1; } 
+			else { this.currentMonth -= 1; }
 		},
 		nextMonth() {
-			if (this.currentMonth === 11) {
-				this.currentMonth = 0;
-				this.currentYear += 1;
-			} else {
-				this.currentMonth += 1;
-			}
+			if (this.currentMonth === 11) { this.currentMonth = 0; this.currentYear += 1; } 
+			else { this.currentMonth += 1; }
 		},
 		selectDate(date) {
-			if (!date.current) {
-				this.currentYear = date.year;
-				this.currentMonth = date.month;
-			}
-			this.selectedDate = {
-				year: date.year,
-				month: date.month,
-				day: date.day
-			};
+			if (!date.current) { this.currentYear = date.year; this.currentMonth = date.month; }
+			this.selectedDate = { year: date.year, month: date.month, day: date.day };
 		},
 		getDateKey(year, month, day) {
 			const m = String(month + 1).padStart(2, '0');
 			const d = String(day).padStart(2, '0');
 			return `${year}-${m}-${d}`;
 		},
-		
-		// --- 像素画相关逻辑 ---
-		
-		loadMoodHistory() {
-			try {
-				const stored = uni.getStorageSync('moodHistory');
-				if (stored && typeof stored === 'object') {
-					this.moodHistory = stored;
-				} else {
-					this.moodHistory = {};
-				}
-			} catch (err) {
-				console.error('加载心情历史失败:', err);
-			}
+
+		// --- 纪念日逻辑 ---
+		loadAnniversaries() {
+			const data = uni.getStorageSync('anniversaries') || [];
+			this.anniversaries = data.map(item => ({
+				...item,
+				days: this.calculateDays(item.date)
+			})).sort((a, b) => Math.abs(a.days) - Math.abs(b.days));
+		},
+		calculateDays(dateStr) {
+			const target = new Date(dateStr.replace(/-/g, '/'));
+			const today = new Date();
+			today.setHours(0,0,0,0); target.setHours(0,0,0,0);
+			return Math.ceil((target - today) / (1000 * 60 * 60 * 24));
+		},
+		openAnniversaryManager() { this.newAnni = { title: '', date: '' }; this.showAnniversarySheet = true; },
+		closeAnniversaryManager() { this.showAnniversarySheet = false; },
+		onAnniDateChange(e) { this.newAnni.date = e.detail.value; },
+		addAnniversary() {
+			const item = { id: Date.now(), title: this.newAnni.title, date: this.newAnni.date };
+			const list = uni.getStorageSync('anniversaries') || [];
+			list.push(item);
+			uni.setStorageSync('anniversaries', list);
+			this.loadAnniversaries();
+			this.newAnni = { title: '', date: '' };
+			uni.showToast({ title: '已添加', icon: 'success' });
+		},
+		deleteAnniversary(id) {
+			const list = uni.getStorageSync('anniversaries') || [];
+			const newList = list.filter(item => item.id !== id);
+			uni.setStorageSync('anniversaries', newList);
+			this.loadAnniversaries();
 		},
 		
-		// 获取某天心情的主色调（用于日历上的小点）
-		getMainMoodColor(dateKey) {
-			const pixels = this.moodHistory[dateKey];
-			if (!pixels || !Array.isArray(pixels)) return '';
-			
-			// 取中心点颜色作为代表色
-			const centerColor = pixels[27] || pixels[36]; 
-			if (centerColor && centerColor !== 'transparent') return centerColor;
-			
-			return pixels.find(c => c !== 'transparent') || '';
+		// --- 海报分享 (高颜值优化版) ---
+		openSharePreview(item) {
+			this.showAnniversarySheet = false;
+			this.showShareSheet = true;
+			setTimeout(() => { this.drawShareImage(item); }, 200);
 		},
-		
-		openPixelEditor() {
-			// 初始化画布
-			if (this.hasMoodToday) {
-				// 复制一份数据，避免直接修改
-				this.editingPixels = [...this.currentMoodPixels];
+		closeShareSheet() { this.showShareSheet = false; },
+		drawShareImage(item) {
+			const ctx = uni.createCanvasContext('shareCanvas', this);
+			const W = 300, H = 400;
+			const isFuture = item.days >= 0;
+			const days = Math.abs(item.days);
+			const label = isFuture ? 'DAYS LEFT' : 'DAYS SINCE';
+			
+			// 1. 背景: 使用更柔和的深色渐变
+			const grd = ctx.createLinearGradient(0, 0, W, H);
+			if (isFuture) {
+				grd.addColorStop(0, '#1c2b4a'); // 蓝黑
+				grd.addColorStop(1, '#2a4b6a'); // 稍亮蓝
 			} else {
-				// 创建 8x8 = 64 个空像素
-				this.editingPixels = Array(64).fill('transparent');
+				grd.addColorStop(0, '#2b1c2d'); // 紫黑
+				grd.addColorStop(1, '#4a2a3a'); // 稍亮紫
 			}
-			this.showPixelSheet = true;
+			ctx.fillStyle = grd;
+			ctx.fillRect(0, 0, W, H);
 			
-			// 延迟获取grid位置，用于滑动绘制
+			// 2. 噪点纹理 (模拟)
+			ctx.setFillStyle('rgba(255,255,255,0.03)');
+			for(let i=0; i<50; i++) {
+				const x = Math.random() * W;
+				const y = Math.random() * H;
+				const r = Math.random() * 2;
+				ctx.beginPath();
+				ctx.arc(x, y, r, 0, 2*Math.PI);
+				ctx.fill();
+			}
+			
+			// 3. 装饰圆环
+			ctx.beginPath();
+			ctx.arc(W/2, H/2 - 40, 100, 0, 2*Math.PI);
+			ctx.setStrokeStyle('rgba(255,255,255,0.1)');
+			ctx.setLineWidth(1);
+			ctx.stroke();
+			
+			ctx.beginPath();
+			ctx.arc(W/2, H/2 - 40, 90, 0, 2*Math.PI);
+			ctx.setStrokeStyle('rgba(255,255,255,0.05)');
+			ctx.setLineWidth(8);
+			ctx.stroke();
+			
+			// 4. 巨大数字
+			ctx.setTextAlign('center');
+			ctx.setFillStyle('#ffffff');
+			ctx.setFontSize(80);
+			// 模拟阴影
+			ctx.setShadow(0, 4, 10, 'rgba(0,0,0,0.3)');
+			ctx.fillText(days.toString(), W/2, H/2 - 10);
+			ctx.setShadow(0, 0, 0, 'transparent'); // 重置阴影
+			
+			// 5. 上方标签
+			ctx.setFontSize(14);
+			ctx.setSpacing && ctx.setSpacing(4); // 如果支持
+			ctx.setFillStyle(isFuture ? '#6ecbff' : '#ff9f1f');
+			ctx.fillText(label, W/2, H/2 - 80);
+			
+			// 6. 分割线
+			ctx.setStrokeStyle('rgba(255,255,255,0.2)');
+			ctx.setLineWidth(1);
+			ctx.beginPath();
+			ctx.moveTo(W/2 - 20, H/2 + 30);
+			ctx.lineTo(W/2 + 20, H/2 + 30);
+			ctx.stroke();
+			
+			// 7. 标题与日期
+			ctx.setFontSize(22);
+			ctx.setFillStyle('#ffffff');
+			ctx.fillText(item.title, W/2, H/2 + 70);
+			
+			ctx.setFontSize(14);
+			ctx.setFillStyle('rgba(255,255,255,0.6)');
+			ctx.fillText(item.date, W/2, H/2 + 96);
+			
+			// 8. 底部品牌
+			ctx.setFontSize(12);
+			ctx.setFillStyle('rgba(255,255,255,0.25)');
+			ctx.fillText('TimeManager · 记录美好', W/2, H - 24);
+			
+			ctx.draw();
+		},
+		saveImageToPhotos() {
+			uni.canvasToTempFilePath({
+				canvasId: 'shareCanvas',
+				success: (res) => {
+					uni.saveImageToPhotosAlbum({
+						filePath: res.tempFilePath,
+						success: () => { uni.showToast({ title: '已保存', icon: 'success' }); this.closeShareSheet(); },
+						fail: () => { uni.showToast({ title: '保存失败', icon: 'none' }); }
+					});
+				}
+			}, this);
+		},
+
+		// --- 像素画逻辑 ---
+		loadMoodHistory() { try { this.moodHistory = uni.getStorageSync('moodHistory') || {}; } catch(e){} },
+		getMainMoodColor(k) { 
+			const p = this.moodHistory[k]; 
+			return (p && Array.isArray(p)) ? (p.find(c => c!=='transparent') || '') : ''; 
+		},
+		openPixelEditor() {
+			const total = this.gridSize * this.gridSize;
+			if (this.hasMoodToday) {
+				if (this.currentMoodPixels.length === 64) {
+					const n = Array(total).fill('transparent');
+					for(let i=0; i<64; i++) {
+						const c = this.currentMoodPixels[i], r=Math.floor(i/8), col=i%8, b=(r*2)*16+(col*2);
+						n[b]=c; n[b+1]=c; n[b+16]=c; n[b+17]=c;
+					}
+					this.editingPixels = n;
+				} else this.editingPixels = [...this.currentMoodPixels];
+			} else this.editingPixels = Array(total).fill('transparent');
+			this.showPixelSheet = true;
 			this.$nextTick(() => {
 				setTimeout(() => {
-					const query = uni.createSelectorQuery().in(this);
-					query.select('.pixel-grid').boundingClientRect(data => {
-						if (data) {
-							this.gridRect = data;
-						}
-					}).exec();
-				}, 300); // 等待动画完成
+					const q = uni.createSelectorQuery().in(this);
+					q.select('.pixel-grid').boundingClientRect(d => { if(d) this.gridRect = d; }).exec();
+				}, 300);
 			});
 		},
-		
-		closePixelEditor() {
-			this.showPixelSheet = false;
-			this.isDrawing = false;
-		},
-		
-		clearCanvas() {
-			this.editingPixels = Array(64).fill('transparent');
-		},
-		
-		selectColor(color) {
-			this.selectedColor = color;
-		},
-		
-		// 触摸绘制逻辑
-		handleTouchDrawStart(e) {
-			this.isDrawing = true;
-			this.paintPixelByEvent(e);
-		},
-		
-		handleTouchDrawMove(e) {
-			if (this.isDrawing) {
-				this.paintPixelByEvent(e);
-			}
-		},
-		
-		handleTouchDrawEnd() {
-			this.isDrawing = false;
-		},
-		
+		closePixelEditor() { this.showPixelSheet = false; this.isDrawing = false; },
+		clearCanvas() { this.editingPixels = Array(this.gridSize * this.gridSize).fill('transparent'); },
+		selectColor(c) { this.selectedColor = c; },
+		handleTouchDrawStart(e) { this.isDrawing = true; this.paintPixelByEvent(e); },
+		handleTouchDrawMove(e) { if(this.isDrawing) this.paintPixelByEvent(e); },
+		handleTouchDrawEnd() { this.isDrawing = false; },
 		paintPixelByEvent(e) {
-			// 如果没有获取到布局信息，或者是点击事件(tap已经处理)，则跳过
-			if (!this.gridRect) return;
-
-			const touch = e.touches[0] || e.changedTouches[0];
-			if (!touch) return;
-			
-			// 计算触摸点相对于 Grid 的位置
-			const x = touch.clientX - this.gridRect.left;
-			const y = touch.clientY - this.gridRect.top;
-			
-			// 计算所在的格子索引 (8x8)
-			const cellSize = this.gridRect.width / 8;
-			
-			if (x >= 0 && x <= this.gridRect.width && y >= 0 && y <= this.gridRect.height) {
-				const col = Math.floor(x / cellSize);
-				const row = Math.floor(y / cellSize);
-				const index = row * 8 + col;
-				
-				if (index >= 0 && index < 64) {
-					// 仅当颜色不同时才更新，减少渲染
-					if (this.editingPixels[index] !== this.selectedColor) {
-						this.editingPixels.splice(index, 1, this.selectedColor);
-					}
+			if(!this.gridRect) return;
+			const t = e.touches[0] || e.changedTouches[0]; if(!t) return;
+			const x = t.clientX - this.gridRect.left, y = t.clientY - this.gridRect.top;
+			const cell = this.gridRect.width / this.gridSize;
+			if(x>=0 && x<=this.gridRect.width && y>=0 && y<=this.gridRect.height) {
+				const c = Math.floor(x/cell), r = Math.floor(y/cell), i = r*this.gridSize+c;
+				if(i>=0 && i<this.editingPixels.length && this.editingPixels[i]!==this.selectedColor) {
+					this.editingPixels.splice(i, 1, this.selectedColor);
 				}
 			}
 		},
-		
-		// 单个像素点击（作为滑动绘制的补充）
-		drawOnePixel(index) {
-			this.editingPixels.splice(index, 1, this.selectedColor);
-		},
-		
+		drawOnePixel(i) { this.editingPixels.splice(i, 1, this.selectedColor); },
 		savePixelArt() {
-			if (!this.selectedDate) return;
-			const dateKey = this.getDateKey(this.selectedDate.year, this.selectedDate.month, this.selectedDate.day);
-			
-			// 检查是否全是透明（空的）
-			const isEmpty = this.editingPixels.every(c => c === 'transparent');
-			
-			if (isEmpty) {
-				// 如果清空了，则删除记录
-				if (this.moodHistory[dateKey]) {
-					delete this.moodHistory[dateKey];
-				}
-			} else {
-				// 保存
-				this.$set(this.moodHistory, dateKey, [...this.editingPixels]);
-			}
-			
-			try {
-				uni.setStorageSync('moodHistory', this.moodHistory);
-				uni.showToast({ title: '心情已保存', icon: 'success' });
-			} catch (err) {
-				console.error('保存失败', err);
-			}
-			
+			if(!this.selectedDate) return;
+			const k = this.getDateKey(this.selectedDate.year, this.selectedDate.month, this.selectedDate.day);
+			const empty = this.editingPixels.every(c => c==='transparent');
+			if(empty) { if(this.moodHistory[k]) delete this.moodHistory[k]; }
+			else this.$set(this.moodHistory, k, [...this.editingPixels]);
+			uni.setStorageSync('moodHistory', this.moodHistory);
 			this.closePixelEditor();
+			uni.showToast({ title: '已保存', icon: 'success' });
 		},
 
-		// --- 任务相关逻辑 (保持原样) ---
-		normalizeTaskRecord(task, fallbackDateKey) {
-			if (!task || typeof task !== 'object') return null;
-			const normalized = { ...task };
-			if (!normalized.createdDate) normalized.createdDate = fallbackDateKey;
-			const needsTarget = !normalized.targetDate || typeof normalized.targetDate !== 'string';
-			if (needsTarget) normalized.targetDate = this.deriveTargetDateFromDeadline(normalized.deadline, fallbackDateKey);
-			if (!normalized.targetDate) normalized.targetDate = null;
-			return normalized;
+		// --- 任务逻辑 ---
+		normalizeTaskHistory(h) {
+			const n = {};
+			for(const k in h) if(h[k]) n[k] = h[k].map(t => {
+				if(!t) return null;
+				const o = {...t};
+				if(!o.createdDate) o.createdDate = k;
+				if(!o.targetDate) o.targetDate = this.deriveTargetDateFromDeadline(o.deadline, k);
+				return o;
+			}).filter(Boolean);
+			return n;
 		},
-		normalizeTaskHistory(rawHistory) {
-			const normalized = {};
-			const hasOwn = Object.prototype.hasOwnProperty;
-			for (const key in rawHistory) {
-				if (!hasOwn.call(rawHistory, key)) continue;
-				const tasks = Array.isArray(rawHistory[key]) ? rawHistory[key] : [];
-				normalized[key] = tasks.map(task => this.normalizeTaskRecord(task, key)).filter(Boolean);
-			}
-			return normalized;
-		},
-		deriveTargetDateFromDeadline(deadlineText, referenceDateKey) {
-			if (!deadlineText || deadlineText === '无截止时间') return null;
-			const referenceDate = referenceDateKey ? new Date(referenceDateKey) : new Date();
-			referenceDate.setHours(0, 0, 0, 0);
-			const normalizedText = String(deadlineText).trim();
-			const isoMatch = normalizedText.match(/(\d{4})-(\d{2})-(\d{2})/);
-			if (isoMatch) return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
-			const relativeOffsets = [
-				{ keyword: '今天', offset: 0 },
-				{ keyword: '明天', offset: 1 },
-				{ keyword: '后天', offset: 2 },
-				{ keyword: '昨天', offset: -1 }
-			];
-			for (const item of relativeOffsets) {
-				if (normalizedText.includes(item.keyword)) {
-					const date = new Date(referenceDate);
-					date.setDate(date.getDate() + item.offset);
-					return this.getDateKey(date.getFullYear(), date.getMonth(), date.getDate());
-				}
-			}
-			const monthDayMatch = normalizedText.match(/(\d{1,2})月(\d{1,2})日/);
-			if (monthDayMatch) {
-				const year = referenceDate.getFullYear();
-				const month = parseInt(monthDayMatch[1], 10) - 1;
-				const day = parseInt(monthDayMatch[2], 10);
-				const date = new Date(year, month, day);
-				return this.getDateKey(date.getFullYear(), date.getMonth(), date.getDate());
-			}
+		deriveTargetDateFromDeadline(txt, k) {
+			if(!txt || txt==='无截止时间') return null;
+			const ref = k ? new Date(k) : new Date(); ref.setHours(0,0,0,0);
+			const s = String(txt).trim();
+			const m1 = s.match(/(\d{4})-(\d{2})-(\d{2})/); if(m1) return `${m1[1]}-${m1[2]}-${m1[3]}`;
+			if(s.includes('明天')) { ref.setDate(ref.getDate()+1); return this.getDateKey(ref.getFullYear(), ref.getMonth(), ref.getDate()); }
+			if(s.includes('今天')) return this.getDateKey(ref.getFullYear(), ref.getMonth(), ref.getDate());
 			return null;
 		},
-		getTasksForDate(dateKey) {
-			const result = [];
-			const targetDate = new Date(dateKey);
-			targetDate.setHours(0, 0, 0, 0);
-			for (const historyDateKey in this.allTasks) {
-				const tasksOnDate = this.allTasks[historyDateKey];
-				if (!Array.isArray(tasksOnDate)) continue;
-				const historyDate = new Date(historyDateKey);
-				historyDate.setHours(0, 0, 0, 0);
-				for (const task of tasksOnDate) {
-					if (task.targetDate === dateKey) {
-						result.push(task);
-					} else if (!task.targetDate) {
-						let effectiveCreatedDate = historyDate;
-						if (task.createdDate) {
-							effectiveCreatedDate = new Date(task.createdDate);
-							effectiveCreatedDate.setHours(0, 0, 0, 0);
-						}
-						if (task.done) {
-							const createdDateKey = this.getDateKey(
-								effectiveCreatedDate.getFullYear(),
-								effectiveCreatedDate.getMonth(),
-								effectiveCreatedDate.getDate()
-							);
-							if (createdDateKey === dateKey) {
-								if (!result.find(t => t.id === task.id)) result.push(task);
-							}
-						} else {
-							if (effectiveCreatedDate <= targetDate) {
-								if (!result.find(t => t.id === task.id)) result.push(task);
-							}
-						}
+		getTasksForDate(k) {
+			const res = [], tgt = new Date(k); tgt.setHours(0,0,0,0);
+			for(const hk in this.allTasks) {
+				const tasks = this.allTasks[hk] || [];
+				const hDate = new Date(hk); hDate.setHours(0,0,0,0);
+				for(const t of tasks) {
+					if(t.targetDate === k) res.push(t);
+					else if(!t.targetDate) {
+						let cDate = t.createdDate ? new Date(t.createdDate) : hDate; cDate.setHours(0,0,0,0);
+						if(t.done) {
+							const doneKey = this.getDateKey(cDate.getFullYear(), cDate.getMonth(), cDate.getDate());
+							if(doneKey === k && !res.find(x=>x.id===t.id)) res.push(t);
+						} else if(cDate <= tgt && !res.find(x=>x.id===t.id)) res.push(t);
 					}
 				}
 			}
-			return result;
+			return res;
 		},
-		hasTasksForDate(dateKey) {
-			const tasks = this.getTasksForDate(dateKey);
-			return tasks.length > 0;
-		},
+		hasTasksForDate(k) { return this.getTasksForDate(k).length > 0; },
 		loadAllTasks() {
-			try {
-				const stored = uni.getStorageSync('taskHistory');
-				if (stored && typeof stored === 'object') {
-					const normalized = this.normalizeTaskHistory(stored);
-					this.allTasks = normalized;
-					uni.setStorageSync('taskHistory', normalized);
-				} else {
-					const todayTasks = uni.getStorageSync('todayTasks');
-					if (todayTasks && Array.isArray(todayTasks)) {
-						const today = new Date();
-						const key = this.getDateKey(today.getFullYear(), today.getMonth(), today.getDate());
-						const normalized = this.normalizeTaskHistory({ [key]: todayTasks });
-						this.allTasks = normalized;
-						uni.setStorageSync('taskHistory', normalized);
-					} else {
-						this.allTasks = {};
-					}
-				}
-			} catch (err) {
-				console.error('加载任务历史失败:', err);
+			const s = uni.getStorageSync('taskHistory');
+			if(s) { this.allTasks = this.normalizeTaskHistory(s); uni.setStorageSync('taskHistory', this.allTasks); }
+			else {
+				const t = uni.getStorageSync('todayTasks');
+				if(t && t.length) {
+					const n = new Date();
+					this.allTasks = this.normalizeTaskHistory({ [this.getDateKey(n.getFullYear(), n.getMonth(), n.getDate())]: t });
+					uni.setStorageSync('taskHistory', this.allTasks);
+				} else this.allTasks = {};
 			}
 		}
 	}
@@ -666,11 +679,8 @@ export default {
 						dateEl.classList.toggle('calendar__date--selected', date.selected);
 						dateEl.classList.toggle('calendar__date--has-tasks', date.hasTasks);
 						dateEl.classList.toggle('calendar__date--has-mood', date.hasMood);
-						
 						const moodDot = dateEl.querySelector('.calendar__mood-dot');
-						if (moodDot && date.moodColor) {
-							moodDot.style.background = date.moodColor;
-						}
+						if (moodDot && date.moodColor) moodDot.style.background = date.moodColor;
 					}
 				});
 			});
@@ -681,650 +691,175 @@ export default {
 
 <style scoped>
 .page {
-	position: relative;
-	min-height: 100vh;
+	position: relative; min-height: 100vh;
 	background: linear-gradient(160deg, #0f1b2b 0%, #1b2d45 55%, #18323e 100%);
-	color: #f6f7fb;
-	overflow: hidden;
-	padding-bottom: 200rpx;
+	color: #f6f7fb; overflow: hidden;
 }
 
+/* 假高斯模糊基础类 */
 .glass {
 	background: rgba(255, 255, 255, 0.12);
 	border: 1rpx solid rgba(255, 255, 255, 0.18);
 	border-radius: 32rpx;
-	box-shadow: 0 26rpx 70rpx rgba(9, 20, 35, 0.55),
-		inset 0 1rpx 0 rgba(255, 255, 255, 0.1);
-	transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1),
-		box-shadow 0.6s cubic-bezier(0.16, 1, 0.3, 1),
-		opacity 0.6s ease;
-	opacity: 0;
-	transform: translateY(30rpx);
+	box-shadow: 0 26rpx 70rpx rgba(9, 20, 35, 0.55), inset 0 1rpx 0 rgba(255, 255, 255, 0.1);
+	/* 移除 backdrop-filter 以使用假模糊 */
+	transition: transform 0.6s, opacity 0.6s;
+	opacity: 0; transform: translateY(30rpx);
 }
+.glass--active { opacity: 1; transform: translateY(0); }
 
-.glass--active {
-	opacity: 1;
-	transform: translateY(0);
+/* 轻量化玻璃卡片 */
+.glass-lite {
+	background: rgba(255, 255, 255, 0.06);
+	border: 1rpx solid rgba(255, 255, 255, 0.1);
+	border-radius: 24rpx;
 }
 
 .top-bar {
-	position: relative;
-	margin: 60rpx 40rpx 24rpx;
-	height: 120rpx;
-	display: flex;
-	align-items: center;
+	margin: 60rpx 40rpx 24rpx; height: 120rpx;
+	display: flex; align-items: center; justify-content: space-between; padding: 0 30rpx; z-index: 3;
+}
+.top-bar__back { font-size: 48rpx; color: rgba(255,255,255,0.88); }
+.top-bar__title { font-size: 42rpx; font-weight: 600; letter-spacing: 6rpx; }
+.top-bar__right { width: 40rpx; }
+
+.main-container { padding: 0 40rpx; height: 100vh; box-sizing: border-box; }
+
+/* 日历 */
+.calendar { padding: 42rpx 32rpx; margin-bottom: 30rpx; }
+.calendar__header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30rpx; }
+.calendar__title { font-size: 36rpx; font-weight: 600; }
+.calendar__nav { width: 60rpx; height: 60rpx; border-radius: 30rpx; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.08); border: 1rpx solid rgba(255,255,255,0.12); }
+.calendar__nav-icon { font-size: 40rpx; color: rgba(255,255,255,0.88); }
+.calendar__weekdays { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8rpx; margin-bottom: 16rpx; }
+.calendar__weekday { text-align: center; font-size: 24rpx; color: rgba(255,255,255,0.6); padding: 12rpx 0; }
+.calendar__dates { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8rpx; }
+.calendar__date { position: relative; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 16rpx; background: rgba(255,255,255,0.06); border: 1rpx solid rgba(255,255,255,0.1); }
+.calendar__date--disabled { opacity: 0.3; }
+.calendar__date--today { background: rgba(110,203,255,0.15); border-color: rgba(110,203,255,0.35); }
+.calendar__date--selected { background: rgba(110,203,255,0.25); border-color: rgba(110,203,255,0.5); transform: scale(1.05); }
+.calendar__date--has-tasks { border-color: rgba(200,155,255,0.4); }
+.calendar__date-text { font-size: 28rpx; color: #f6f7fb; }
+.calendar__date-dot { position: absolute; bottom: 8rpx; width: 6rpx; height: 6rpx; border-radius: 50%; background: rgba(200,155,255,0.9); }
+.calendar__mood-dot { position: absolute; top: 8rpx; right: 8rpx; width: 8rpx; height: 8rpx; border-radius: 50%; }
+
+/* Tabs 切换栏 */
+.tabs {
+	display: flex; padding: 12rpx; margin-bottom: 30rpx;
 	justify-content: space-between;
-	padding: 0 30rpx;
-	z-index: 3;
 }
-
-.top-bar__left,
-.top-bar__right {
-	width: 120rpx;
-	display: flex;
-	align-items: center;
-	justify-content: flex-start;
+.tab-item {
+	flex: 1; height: 70rpx; display: flex; flex-direction: column;
+	align-items: center; justify-content: center; position: relative;
+	border-radius: 16rpx; transition: all 0.3s;
 }
-
-.top-bar__right {
-	justify-content: flex-end;
+.tab-item--active { background: rgba(255,255,255,0.1); }
+.tab-item__text { font-size: 28rpx; font-weight: 500; color: rgba(255,255,255,0.7); }
+.tab-item--active .tab-item__text { color: #fff; font-weight: 600; }
+.tab-item__indicator {
+	width: 8rpx; height: 8rpx; background: #6ecbff; border-radius: 50%;
+	position: absolute; bottom: 6rpx; opacity: 0; transition: opacity 0.3s;
 }
+.tab-item--active .tab-item__indicator { opacity: 1; }
 
-.top-bar__title {
-	font-size: 42rpx;
-	font-weight: 600;
-	letter-spacing: 6rpx;
-	color: #f9fbff;
-}
+/* 内容区域 */
+.content-area { height: calc(100vh - 850rpx); } /* 动态高度，适配不同屏幕 */
+.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24rpx; padding: 0 8rpx; }
+.section-title { font-size: 32rpx; font-weight: 600; }
+.section-sub { font-size: 24rpx; color: rgba(255,255,255,0.6); }
 
-.top-bar__back {
-	font-size: 48rpx;
-	color: rgba(255,255,255,0.88);
-	cursor: pointer;
-}
+/* 任务列表样式 */
+.task { display: flex; align-items: center; justify-content: space-between; padding: 24rpx; margin-bottom: 20rpx; transition: transform 0.2s; }
+.task:active { transform: scale(0.98); }
+.task--done { opacity: 0.6; }
+.task__title { font-size: 28rpx; margin-bottom: 4rpx; display: block; }
+.task__title--strikethrough { text-decoration: line-through; }
+.task__deadline { font-size: 22rpx; color: rgba(255,255,255,0.5); }
+.task__check { color: #6ecbff; font-size: 32rpx; }
 
-.main {
-	position: relative;
-	padding: 0 40rpx;
-	padding-bottom: calc(240rpx + env(safe-area-inset-bottom));
-	box-sizing: border-box;
-	z-index: 2;
-	display: flex;
-	flex-direction: column;
-	gap: 40rpx;
-}
+/* 心情像素画样式 */
+.pixel-card { padding: 30rpx; display: flex; justify-content: center; }
+.pixel-preview { display: grid; gap: 2rpx; width: 400rpx; height: 400rpx; padding: 4rpx; background: #1e272e; border-radius: 12rpx; }
+.pixel-dot { width: 100%; height: 100%; }
+.pixel-placeholder { height: 400rpx; width: 400rpx; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2rpx dashed rgba(255,255,255,0.2); border-radius: 12rpx; }
+.pixel-plus { font-size: 60rpx; color: rgba(255,255,255,0.5); }
+.pixel-hint { font-size: 24rpx; color: rgba(255,255,255,0.5); margin-top: 10rpx; }
 
-.main::after {
-	content: '';
-	position: fixed;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	height: 200rpx;
-	background: linear-gradient(to top, rgba(15, 27, 43, 0.95) 0%, rgba(15, 27, 43, 0.6) 40%, transparent 100%);
-	pointer-events: none;
-	z-index: 1;
-}
+/* 纪念日样式 */
+.add-btn-mini { padding: 8rpx 20rpx; background: rgba(110,203,255,0.15); border-radius: 20rpx; font-size: 22rpx; color: #6ecbff; }
+.anni-card { padding: 24rpx; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20rpx; transition: transform 0.2s; }
+.anni-card:active { transform: scale(0.98); }
+.anni-card__title { font-size: 30rpx; font-weight: 600; margin-bottom: 6rpx; display: block; }
+.anni-card__date { font-size: 22rpx; color: rgba(255,255,255,0.5); }
+.anni-card__badge { text-align: right; }
+.anni-num { font-size: 40rpx; font-weight: 700; margin-right: 6rpx; }
+.anni-unit { font-size: 22rpx; margin-right: 10rpx; }
+.anni-label { font-size: 20rpx; padding: 4rpx 8rpx; border-radius: 8rpx; background: rgba(255,255,255,0.1); }
+.future .anni-num { color: #6ecbff; }
+.past .anni-num { color: #ff9f1f; }
 
-.calendar {
-	padding: 42rpx 32rpx;
-}
+/* 空状态 */
+.empty-state { padding: 60rpx 0; text-align: center; opacity: 0.6; }
+.empty-icon { font-size: 60rpx; margin-bottom: 10rpx; display: block; }
+.empty-text { font-size: 26rpx; }
 
-.calendar.glass--active .calendar__header,
-.calendar.glass--active .calendar__weekdays {
-	animation: fade-slide 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-	animation-delay: 0.05s;
-}
-
-.calendar__header {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	margin-bottom: 38rpx;
-}
-
-.calendar__title {
-	font-size: 36rpx;
-	font-weight: 600;
-}
-
-.calendar__nav {
-	width: 60rpx;
-	height: 60rpx;
-	border-radius: 30rpx;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	background: rgba(255,255,255,0.08);
-	border: 1rpx solid rgba(255,255,255,0.12);
-	transition: all 0.25s ease;
-	cursor: pointer;
-}
-
-.calendar__nav:active {
-	background: rgba(110,203,255,0.2);
-	transform: scale(0.9);
-}
-
-.calendar__nav-icon {
-	font-size: 40rpx;
-	color: rgba(255,255,255,0.88);
-	font-weight: 300;
-}
-
-.calendar__weekdays {
-	display: grid;
-	grid-template-columns: repeat(7, 1fr);
-	gap: 8rpx;
-	margin-bottom: 16rpx;
-}
-
-.calendar__weekday {
-	text-align: center;
-	font-size: 24rpx;
-	color: rgba(255,255,255,0.6);
-	padding: 12rpx 0;
-}
-
-.calendar__dates {
-	display: grid;
-	grid-template-columns: repeat(7, 1fr);
-	gap: 8rpx;
-}
-
-.calendar.glass--active .calendar__date {
-	animation: calendar-pop 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-}
-
-.calendar.glass--active .calendar__date:nth-child(7n + 1) { animation-delay: 0.02s; }
-.calendar.glass--active .calendar__date:nth-child(7n + 2) { animation-delay: 0.06s; }
-.calendar.glass--active .calendar__date:nth-child(7n + 3) { animation-delay: 0.1s; }
-.calendar.glass--active .calendar__date:nth-child(7n + 4) { animation-delay: 0.14s; }
-.calendar.glass--active .calendar__date:nth-child(7n + 5) { animation-delay: 0.18s; }
-.calendar.glass--active .calendar__date:nth-child(7n + 6) { animation-delay: 0.22s; }
-.calendar.glass--active .calendar__date:nth-child(7n + 7) { animation-delay: 0.26s; }
-
-.calendar__date {
-	position: relative;
-	aspect-ratio: 1;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	border-radius: 16rpx;
-	background: rgba(255,255,255,0.06);
-	border: 1rpx solid rgba(255,255,255,0.1);
-	transition: all 0.25s ease;
-	cursor: pointer;
-}
-
-.calendar__date--disabled {
-	opacity: 0.3;
-}
-
-.calendar__date--today {
-	background: rgba(110,203,255,0.15);
-	border-color: rgba(110,203,255,0.35);
-}
-
-.calendar__date--selected {
-	background: rgba(110,203,255,0.25);
-	border-color: rgba(110,203,255,0.5);
-	transform: scale(1.05);
-}
-
-.calendar__date--has-tasks {
-	border-color: rgba(200,155,255,0.4);
-}
-
-.calendar__date:active:not(.calendar__date--disabled) {
-	transform: scale(0.95);
-}
-
-.calendar__date-text {
-	font-size: 28rpx;
-	color: #f6f7fb;
-}
-
-.calendar__date-dot {
-	position: absolute;
-	bottom: 8rpx;
-	width: 6rpx;
-	height: 6rpx;
-	border-radius: 50%;
-	background: rgba(200,155,255,0.9);
-}
-
-/* 像素画心情标记点 */
-.calendar__mood-dot {
-	position: absolute;
-	top: 8rpx;
-	right: 8rpx;
-	width: 8rpx;
-	height: 8rpx;
-	border-radius: 50%;
-}
-
-/* 心情卡片样式 */
-.mood-section {
-	padding: 40rpx 32rpx;
-}
-
-.pixel-preview-container {
-	margin-top: 10rpx;
-	background: rgba(0,0,0,0.2);
-	border-radius: 20rpx;
-	padding: 24rpx;
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	min-height: 200rpx;
-	border: 1rpx solid rgba(255,255,255,0.05);
-}
-
-.pixel-preview {
-	display: grid;
-	grid-template-columns: repeat(8, 1fr);
-	gap: 2rpx;
-	width: 200rpx;
-	height: 200rpx;
-	padding: 4rpx;
-	background: #1e272e;
-	border-radius: 8rpx;
-}
-
-.pixel-dot {
-	width: 100%;
-	height: 100%;
-}
-
-.pixel-empty {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 16rpx;
-	opacity: 0.6;
-}
-
-.pixel-empty-icon {
-	font-size: 48rpx;
-}
-
-.pixel-empty-text {
-	font-size: 24rpx;
-	color: rgba(255,255,255,0.7);
-}
-
-/* 像素画弹窗样式 - 独立于 glass，强制不透明 */
+/* 弹窗通用 */
+.sheet-mask { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10,17,28,0.85); z-index: 10; animation: fade-in 0.3s; }
 .sheet {
-	position: fixed;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	padding: 42rpx 40rpx 60rpx;
-	border-radius: 46rpx 46rpx 0 0;
-	z-index: 11;
-	transform: translateY(120%);
-	transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-	opacity: 1; /* 强制不透明，修复继承glass的问题 */
+	position: fixed; left: 0; right: 0; bottom: 0; padding: 40rpx 40rpx 60rpx;
+	border-radius: 46rpx 46rpx 0 0; z-index: 11;
+	transform: translateY(120%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+	opacity: 1; /* 强制不透明 */
 }
+.glass-sheet { background: rgba(20, 30, 45, 0.98); box-shadow: 0 -10rpx 40rpx rgba(0,0,0,0.4); border-top: 1rpx solid rgba(255,255,255,0.1); }
+.pixel-sheet { background: rgba(20, 30, 45, 0.98); }
+.sheet--open { transform: translateY(0); }
+.sheet__handle { width: 80rpx; height: 8rpx; background: rgba(255,255,255,0.2); border-radius: 4rpx; margin: -20rpx auto 30rpx; }
+.sheet__header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40rpx; }
+.sheet__title { font-size: 34rpx; font-weight: 600; }
+.sheet__close { width: 60rpx; height: 60rpx; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.08); border-radius: 50%; font-size: 28rpx; color: rgba(255,255,255,0.7); }
+.sheet__btn--clear { padding: 8rpx 24rpx; font-size: 24rpx; color: rgba(255,255,255,0.6); background: rgba(255,255,255,0.1); border-radius: 12rpx; }
 
-/* 专门为像素画弹窗定义的样式，复用 glass 的视觉效果但避免其副作用 */
-.pixel-sheet {
-	background: rgba(18, 30, 45, 0.95);
-	box-shadow: 0 26rpx 70rpx rgba(9, 20, 35, 0.55),
-		inset 0 1rpx 0 rgba(255, 255, 255, 0.1);
-}
+/* 像素编辑器 */
+.pixel-editor { display: flex; flex-direction: column; align-items: center; gap: 30rpx; }
+.pixel-grid { display: grid; grid-template-columns: repeat(16, 1fr) !important; gap: 1rpx; width: 560rpx; height: 560rpx; background: #2f3640; padding: 4rpx; border-radius: 12rpx; }
+.pixel-cell { background: #1e272e; border-radius: 2rpx; }
+.pixel-cell--active { box-shadow: inset 0 0 4rpx rgba(0,0,0,0.1); }
+.palette { display: flex; flex-wrap: wrap; justify-content: center; gap: 20rpx; width: 100%; }
+.palette-color { width: 60rpx; height: 60rpx; border-radius: 50%; border: 3rpx solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; }
+.palette-color--selected { transform: scale(1.1); border-color: #fff; box-shadow: 0 0 10rpx rgba(255,255,255,0.3); }
+.palette-color--eraser { background: #353b48; }
+.eraser-icon { font-size: 24rpx; color: rgba(255,255,255,0.5); }
 
-.sheet-mask {
-	position: fixed;
-	left: 0;
-	top: 0;
-	width: 100%;
-	height: 100%;
-	background: rgba(10,17,28,0.85);
-	z-index: 10;
-	animation: fade-in 0.3s ease;
-}
+/* 纪念日表单 */
+.anni-form { display: flex; gap: 16rpx; margin-bottom: 30rpx; }
+.anni-input { flex: 1; height: 80rpx; background: rgba(255,255,255,0.06); border-radius: 16rpx; padding: 0 24rpx; font-size: 28rpx; color: #fff; border: 1rpx solid rgba(255,255,255,0.1); }
+.anni-input--date { display: flex; align-items: center; justify-content: center; }
+.anni-list-scroll { max-height: 400rpx; }
+.anni-item-row { display: flex; justify-content: space-between; align-items: center; padding: 24rpx 0; border-bottom: 1rpx solid rgba(255,255,255,0.05); }
+.anni-row__title { font-size: 30rpx; color: #fff; margin-right: 20rpx; }
+.anni-row__date { font-size: 24rpx; color: rgba(255,255,255,0.5); }
+.anni-row__del { font-size: 24rpx; color: #ff7b8a; padding: 10rpx; }
 
-.sheet--open {
-	transform: translateY(0);
-}
+/* 海报分享 */
+.canvas-wrapper { display: flex; justify-content: center; margin-bottom: 40rpx; }
+.share-canvas { width: 300px; height: 400px; border-radius: 20rpx; box-shadow: 0 20rpx 60rpx rgba(0,0,0,0.4); }
 
-.sheet__header {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	margin-bottom: 40rpx;
-}
-
-.sheet__handle {
-	width: 80rpx;
-	height: 8rpx;
-	background: rgba(255,255,255,0.2);
-	border-radius: 4rpx;
-	margin: -20rpx auto 30rpx;
-}
-
-.sheet__actions {
-	display: flex;
-	align-items: center;
-	gap: 20rpx;
-}
-
-.sheet__btn {
-	padding: 8rpx 20rpx;
-	font-size: 24rpx;
-	color: rgba(255,255,255,0.6);
-	background: rgba(255,255,255,0.1);
-	border-radius: 12rpx;
-}
-
-.sheet__close {
-	width: 60rpx;
-	height: 60rpx;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	background: rgba(255,255,255,0.08);
-	border-radius: 50%;
-}
-
-.sheet__close-icon {
-	font-size: 32rpx;
-	color: rgba(255,255,255,0.8);
-}
-
-/* 像素编辑器样式 */
-.pixel-editor {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 40rpx;
-}
-
-.pixel-grid {
-	display: grid;
-	grid-template-columns: repeat(8, 1fr);
-	gap: 2rpx;
-	width: 560rpx;
-	height: 560rpx;
-	background: #2f3640;
-	padding: 4rpx;
-	border-radius: 12rpx;
-	box-shadow: 0 10rpx 30rpx rgba(0,0,0,0.3);
-}
-
-.pixel-cell {
-	background: #1e272e;
-	transition: background 0.1s;
-	border-radius: 2rpx;
-}
-
-.pixel-cell--active {
-	box-shadow: inset 0 0 4rpx rgba(0,0,0,0.1);
-}
-
-.palette {
-	display: flex;
-	flex-wrap: wrap;
-	justify-content: center;
-	gap: 24rpx;
-	width: 100%;
-}
-
-.palette-color {
-	width: 64rpx;
-	height: 64rpx;
-	border-radius: 50%;
-	border: 4rpx solid rgba(255,255,255,0.1);
-	transition: transform 0.2s, border-color 0.2s;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
-
-.palette-color--selected {
-	transform: scale(1.15);
-	border-color: #ffffff;
-	box-shadow: 0 0 16rpx rgba(255,255,255,0.2);
-}
-
-.palette-color--eraser {
-	background: repeating-linear-gradient(
-		45deg,
-		#353b48,
-		#353b48 10rpx,
-		#2f3640 10rpx,
-		#2f3640 20rpx
-	);
-	border-color: rgba(255,255,255,0.2);
-}
-
-.eraser-icon {
-	font-size: 28rpx;
-	color: rgba(255,255,255,0.6);
-}
-
-.save-btn {
-	width: 100%;
-	height: 90rpx;
-	line-height: 90rpx;
-	background: linear-gradient(135deg, #1dd1a1, #10ac84);
-	color: #fff;
-	font-weight: 600;
-	border-radius: 24rpx;
-	font-size: 32rpx;
-	margin-top: 20rpx;
-}
-
-.tasks {
-	padding: 40rpx 32rpx 32rpx;
-}
-
-.tasks.glass--active .task {
-	animation: list-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.tasks.glass--active .task:nth-child(1) { animation-delay: 0.05s; }
-.tasks.glass--active .task:nth-child(2) { animation-delay: 0.1s; }
-.tasks.glass--active .task:nth-child(3) { animation-delay: 0.15s; }
-.tasks.glass--active .task:nth-child(4) { animation-delay: 0.2s; }
-.tasks.glass--active .task:nth-child(5) { animation-delay: 0.25s; }
-
-.tasks.glass--active .empty {
-	animation: list-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.card-header {
-	display: flex;
-	flex-direction: column;
-	gap: 10rpx;
-	margin-bottom: 38rpx;
-}
-
-.card-title {
-	font-size: 36rpx;
-	font-weight: 600;
-}
-
-.card-sub {
-	font-size: 24rpx;
-	color: rgba(255,255,255,0.65);
-}
-
-.task {
-	margin-bottom: 26rpx;
-	padding: 30rpx 26rpx;
-	border-radius: 26rpx;
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	background: rgba(255,255,255,0.06);
-	border: 1rpx solid rgba(255,255,255,0.1);
-	transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
-		background 0.35s ease;
-}
-
-.task--done {
-	background: rgba(110,203,255,0.15);
-	border-color: rgba(110,203,255,0.35);
-}
-
-.task__info {
-	display: flex;
-	flex-direction: column;
-	gap: 8rpx;
-	flex: 1;
-}
-
-.task__title {
-	font-size: 30rpx;
-	font-weight: 500;
-	transition: opacity 0.3s ease;
-}
-
-.task__title--strikethrough {
-	text-decoration: line-through;
-	opacity: 0.6;
-}
-
-.task__deadline {
-	font-size: 24rpx;
-	color: rgba(255,255,255,0.6);
-	transition: opacity 0.3s ease;
-}
-
-.task__deadline--strikethrough {
-	text-decoration: line-through;
-	opacity: 0.5;
-}
-
-.task__check {
-	width: 60rpx;
-	height: 60rpx;
-	border-radius: 30rpx;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	font-size: 32rpx;
-	background: rgba(110,203,255,0.2);
-	color: #6ecbff;
-}
-
-.empty {
-	padding: 80rpx 0;
-	text-align: center;
-}
-
-.empty__tip {
-	font-size: 26rpx;
-	color: rgba(255,255,255,0.6);
-}
+/* 通用按钮 */
+.action-btn { width: 100%; height: 90rpx; line-height: 90rpx; background: linear-gradient(135deg, #1dd1a1, #10ac84); color: #fff; font-weight: 600; border-radius: 24rpx; font-size: 32rpx; }
+.action-btn:active { opacity: 0.9; transform: scale(0.98); }
+.action-btn--small { width: 140rpx; height: 80rpx; line-height: 80rpx; font-size: 28rpx; background: #6ecbff; color: #0f1b2b; }
 
 .bottom-bar {
-	position: fixed;
-	left: 40rpx;
-	right: 40rpx;
-	bottom: 40rpx;
-	height: 120rpx;
-	border-radius: 60rpx;
-	display: flex;
-	align-items: center;
-	justify-content: space-around;
-	z-index: 3;
-	padding: 0 32rpx;
-	transition: transform 0.3s ease, opacity 0.3s ease;
+	position: fixed; left: 40rpx; right: 40rpx; bottom: 40rpx; height: 120rpx; border-radius: 60rpx;
+	display: flex; align-items: center; justify-content: space-around; z-index: 3;
+	background: rgba(255, 255, 255, 0.08); border: 1rpx solid rgba(255, 255, 255, 0.12);
+	/* 假模糊：用纯色半透明代替 backdrop-filter */
 }
+.bottom-bar__item { display: flex; flex-direction: column; align-items: center; gap: 10rpx; color: rgba(255,255,255,0.62); transition: all 0.2s; }
+.bottom-bar__item--active { color: #ffffff; transform: translateY(-6rpx); }
+.bottom-bar__icon { font-size: 32rpx; }
+.bottom-bar__label { font-size: 24rpx; }
 
-/* 底部 bar 使用实时动态模糊 */
-.bottom-bar.glass {
-	background: rgba(255, 255, 255, 0.08);
-	border: 1rpx solid rgba(255, 255, 255, 0.12);
-	backdrop-filter: blur(50rpx);
-	-webkit-backdrop-filter: blur(50rpx);
-}
-
-.bottom-bar__item {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 10rpx;
-	font-size: 24rpx;
-	color: rgba(255,255,255,0.62);
-	flex: 1;
-	padding: 10rpx 0;
-	transition: transform 0.25s ease, color 0.25s ease;
-}
-
-.bottom-bar__item--active {
-	color: #ffffff;
-	font-weight: 600;
-	transform: translateY(-6rpx);
-}
-
-.bottom-bar__icon {
-	font-size: 32rpx;
-}
-
-.bottom-bar__label {
-	font-size: 24rpx;
-}
-
-@keyframes fade-slide {
-	0% {
-		opacity: 0;
-		transform: translateY(40rpx);
-	}
-	100% {
-		opacity: 1;
-		transform: translateY(0);
-	}
-}
-
-@keyframes fade-in {
-	0% { opacity: 0; }
-	100% { opacity: 1; }
-}
-
-@keyframes calendar-pop {
-	0% {
-		opacity: 0;
-		transform: scale(0.85) translateY(30rpx);
-	}
-	70% {
-		opacity: 1;
-		transform: scale(1.05) translateY(0);
-	}
-	100% {
-		transform: scale(1) translateY(0);
-	}
-}
-
-@keyframes list-in {
-	0% {
-		opacity: 0;
-		transform: translateY(35rpx) scale(0.98);
-	}
-	100% {
-		opacity: 1;
-		transform: translateY(0) scale(1);
-	}
-}
-
-@media (prefers-reduced-motion: reduce) {
-	.calendar.glass--active .calendar__header,
-	.calendar.glass--active .calendar__weekdays,
-	.calendar.glass--active .calendar__date,
-	.tasks.glass--active .task,
-	.tasks.glass--active .empty {
-		animation: none !important;
-	}
-	.glass,
-	.task,
-	.calendar__nav,
-	.bottom-bar,
-	.sheet {
-		transition-duration: 0.01ms !important;
-	}
-}
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 </style>
