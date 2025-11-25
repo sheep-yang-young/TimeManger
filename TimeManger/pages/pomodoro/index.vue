@@ -467,6 +467,11 @@ export default {
 				return;
 			}
 			this.finishButtonPressing = true;
+			uni.showToast({
+				title: '继续按住可结束计划',
+				icon: 'none',
+				duration: 1200
+			});
 			if (this.finishButtonPressTimer) {
 				clearTimeout(this.finishButtonPressTimer);
 			}

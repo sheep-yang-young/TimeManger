@@ -1,19 +1,5 @@
 <template>
 	<view class="page">
-		<view class="top-bar glass" :class="{ 'glass--active': pageLoaded }">
-			<view class="top-bar__left" @tap="toggleSideMenu">
-				<view class="icon-more">
-					<text class="icon-more__line"></text>
-					<text class="icon-more__line"></text>
-					<text class="icon-more__line"></text>
-				</view>
-			</view>
-			<text class="top-bar__title">今日</text>
-			<view class="top-bar__right">
-				<text class="top-bar__date">{{ todayLabel }}</text>
-			</view>
-		</view>
-
 		<view class="side-menu" :class="{ 'side-menu--open': showSideMenu }">
 			<view class="side-menu__header">
 				<text class="side-menu__title">更多功能</text>
@@ -28,6 +14,20 @@
 		<view class="side-menu__mask" v-show="showSideMenu" @tap="toggleSideMenu"></view>
 
 		<scroll-view scroll-y class="main-scroll" @scroll="onPageScroll">
+			<view class="top-bar glass" :class="{ 'glass--active': pageLoaded }">
+				<view class="top-bar__left" @tap="toggleSideMenu">
+					<view class="icon-more">
+						<text class="icon-more__line"></text>
+						<text class="icon-more__line"></text>
+						<text class="icon-more__line"></text>
+					</view>
+				</view>
+				<text class="top-bar__title">今日</text>
+				<view class="top-bar__right">
+					<text class="top-bar__date">{{ todayLabel }}</text>
+				</view>
+			</view>
+
 			<view class="main-content">
 				
 				<view class="checkin-card glass" :class="{ 'glass--active': pageLoaded }" @tap="handleDailyCheckIn">
@@ -487,7 +487,6 @@ export default {
 			// 菜单配置
 			sideMenuItems: [
 				{ label: '目标设置', tip: '设置效率指标目标', action: 'goals' },
-				{ label: '数据备份', tip: '导入或导出数据', action: 'backup' },
 				{ label: '反馈建议', tip: '发送反馈', action: 'feedback' },
 				{ label: '关于应用', tip: '版本信息与说明', action: 'about' }
 			],
@@ -698,10 +697,6 @@ export default {
 			this.showSideMenu = false;
 			switch (item.action) {
 				case 'goals': this.showGoalsSheet = true; break;
-				case 'backup': 
-					this.showBackupSheet = true; 
-					setTimeout(() => { uni.showToast({ title: '功能正在开发中', icon: 'none' }); }, 100);
-					break;
 				case 'feedback': this.showFeedbackSheet = true; break;
 				case 'about': this.showAboutSheet = true; break;
 				default: uni.showToast({ title: '功能开发中', icon: 'none' });
@@ -1072,17 +1067,17 @@ export default {
 	color: rgba(255,255,255,0.6);
 }
 
-/* 核心改动：使用 ScrollView 布局 */
+/* 核心改动：修改 ScrollView 布局，使其占据全屏 */
 .main-scroll {
 	position: absolute;
-	top: 180rpx; /* 预留 TopBar 高度 */
-	bottom: 120rpx; /* 预留 BottomBar 高度 */
+	top: 0; /* 改为 0，从顶部开始 */
+	bottom: 0; /* 改为 0，占据到底部 */
 	width: 100%;
 }
 
 .main-content {
 	padding: 0 40rpx;
-	padding-bottom: 200rpx; /* 底部额外空间 */
+	/* 移除 padding-bottom，使用下方空 view 占位 */
 }
 
 /* 1. 每日签到卡片 */

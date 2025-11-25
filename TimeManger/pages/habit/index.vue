@@ -69,37 +69,56 @@
 				
 				<view v-if="activeTab === 'habits'" class="habit-list">
 					<view class="card-header">
-						<text class="card-title">每日委托</text>
-						<text class="card-sub">{{ todayCheckinCount }}/{{ habits.length }} 完成</text>
+						<view class="header-left">
+							<text class="card-title">每日委托</text>
+							<text class="card-sub">完成任务赚取赏金</text>
+						</view>
+						<view class="header-right">
+							<text class="completion-rate">{{ todayCheckinCount }}/{{ habits.length }}</text>
+						</view>
 					</view>
 
-					<view v-if="habits.length">
-						<view v-for="habit in habits" :key="habit.id" class="habit-card" :class="getHabitCardClass(habit)">
-							<view class="habit-card__main" @tap="toggleHabit(habit)">
-								<view class="habit-card__left">
-									<view class="habit-checkbox" :class="{ 'habit-checkbox--checked': habit.checkedToday }">
-										<text class="habit-checkbox__icon">{{ habit.checkedToday ? '✓' : '' }}</text>
-									</view>
-									<view class="habit-info">
-										<text class="habit-title">{{ habit.title }}</text>
-										<view class="habit-meta">
-											<text class="habit-meta__time">{{ habit.time }}</text>
-											<text class="habit-meta__energy">+{{ habit.energy }} EXP</text>
-											<text class="habit-meta__gold" style="color:#ffd700; margin-left:10rpx;">+{{ habit.goldReward || 5 }} 🪙</text>
-										</view>
-									</view>
+					<view v-if="habits.length" class="habit-grid">
+						<view 
+							v-for="habit in habits" 
+							:key="habit.id" 
+							class="quest-card" 
+							:class="getHabitCardClass(habit)"
+							@tap="toggleHabit(habit)"
+						>
+							<view class="quest-left">
+								<view class="magic-checkbox" :class="{ 'magic-checkbox--checked': habit.checkedToday }">
+									<text class="magic-check-icon" v-if="habit.checkedToday">✓</text>
 								</view>
-								<view class="habit-card__right">
-									<view class="habit-streak">
-										<text class="habit-streak__value">{{ habit.streak }}</text>
-										<text class="habit-streak__label">天</text>
+							</view>
+							
+							<view class="quest-main">
+								<text class="quest-title" :class="{ 'quest-title--done': habit.checkedToday }">{{ habit.title }}</text>
+								<view class="quest-tags">
+									<view class="q-tag q-tag--time">
+										<text>⏰ {{ habit.time }}</text>
+									</view>
+									<view class="q-tag q-tag--exp">
+										<text>✨ +{{ habit.energy }}</text>
+									</view>
+									<view class="q-tag q-tag--gold">
+										<text>🪙 +{{ habit.goldReward || 5 }}</text>
 									</view>
 								</view>
 							</view>
-							<view class="habit-actions">
-								<button class="habit-action-btn habit-action-btn--edit" @tap.stop="editHabit(habit)">✎</button>
-								<button class="habit-action-btn habit-action-btn--delete" @tap.stop="deleteHabit(habit)">×</button>
+							
+							<view class="quest-right">
+								<view class="streak-badge">
+									<text class="streak-fire">🔥</text>
+									<text class="streak-count">{{ habit.streak }}</text>
+								</view>
+								<view class="quest-actions">
+									<view class="q-action-btn" @tap.stop="editHabit(habit)">✎</view>
+									<view class="q-action-btn q-action-btn--del" @tap.stop="deleteHabit(habit)">×</view>
+								</view>
 							</view>
+							
+							<view class="quest-glow" v-if="habit.checkedToday"></view>
 						</view>
 					</view>
 					
@@ -187,7 +206,7 @@
 		</view>
 
 		<view class="sheet-mask" v-if="showAddSheet" @tap="closeAddSheet"></view>
-		<view class="sheet glass" :class="{ 'sheet--open': showAddSheet }" @touchmove.stop>
+		<view class="sheet glass" :class="{ 'sheet--open': showAddSheet }" v-if="showAddSheet" @touchmove.stop>
 			<view class="sheet__handle"></view>
 			<view class="sheet__header">
 				<text class="sheet__title">{{ isEditing ? '编辑习惯' : '创建新习惯' }}</text>
@@ -468,7 +487,7 @@ export default {
 
 		// --- 习惯列表交互 ---
 		getHabitCardClass(habit) {
-			return habit.checkedToday ? 'habit-card--checked' : '';
+			return habit.checkedToday ? 'quest-card--completed' : '';
 		},
 		toggleHabit(habit) {
 			const todayKey = this.buildTodayKey();
@@ -674,29 +693,119 @@ export default {
 
 /* 3. 列表区域 */
 .tab-content { height: calc(100vh - 500rpx); }
-.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20rpx; }
-.card-title { font-size: 32rpx; font-weight: 600; }
-.card-sub { font-size: 24rpx; color: rgba(255,255,255,0.6); }
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24rpx; }
+.header-left { display: flex; flex-direction: column; gap: 4rpx; }
+.card-title { font-size: 34rpx; font-weight: 600; }
+.card-sub { font-size: 22rpx; color: rgba(255,255,255,0.5); }
+.completion-rate { font-size: 32rpx; font-weight: 700; color: #6ecbff; font-family: monospace; }
 
-/* 习惯卡片 (保留原有样式) */
-.habit-card { display: flex; justify-content: space-between; align-items: center; padding: 24rpx; margin-bottom: 20rpx; transition: all 0.3s; border: 1rpx solid rgba(255,255,255,0.1); }
-.habit-card--checked { border-color: rgba(90,255,208,0.4); background: rgba(90,255,208,0.08); }
-.habit-card__main { flex: 1; display: flex; justify-content: space-between; align-items: center; }
-.habit-card__left { display: flex; align-items: center; gap: 24rpx; }
-.habit-checkbox { width: 44rpx; height: 44rpx; border-radius: 50%; border: 3rpx solid rgba(255,255,255,0.3); display: flex; align-items: center; justify-content: center; font-size: 24rpx; }
-.habit-checkbox--checked { background: #5affd0; border-color: #5affd0; color: #000; }
-.habit-details { display: flex; flex-direction: column; }
-.habit-title { font-size: 30rpx; font-weight: 500; }
-.habit-meta { display: flex; align-items: center; font-size: 22rpx; color: rgba(255,255,255,0.5); gap: 10rpx; }
-.habit-meta__energy { color: #6ecbff; }
-.habit-card__right { display: flex; align-items: center; gap: 10rpx; }
-.habit-streak { text-align: center; padding: 8rpx 16rpx; background: rgba(255,255,255,0.1); border-radius: 12rpx; }
-.habit-streak__value { font-size: 32rpx; font-weight: 700; color: #ffd700; display: block; }
-.habit-streak__label { font-size: 18rpx; color: rgba(255,255,255,0.6); }
-.habit-actions { display: flex; flex-direction: column; gap: 10rpx; margin-left: 20rpx; }
-.habit-action-btn { width: 60rpx; height: 60rpx; line-height: 60rpx; text-align: center; font-size: 24rpx; background: rgba(255,255,255,0.1); border-radius: 12rpx; color: rgba(255,255,255,0.6); padding: 0; }
+/* === 习惯卡片新样式 === */
+.habit-grid { display: flex; flex-direction: column; gap: 24rpx; }
 
-/* 商店样式 */
+.quest-card {
+	position: relative;
+	display: flex;
+	align-items: center;
+	padding: 24rpx 28rpx;
+	border-radius: 28rpx;
+	background: rgba(30, 41, 59, 0.7);
+	border: 1rpx solid rgba(255, 255, 255, 0.08);
+	transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+	overflow: hidden;
+}
+
+.quest-card:active { transform: scale(0.98); }
+
+/* 完成状态 */
+.quest-card--completed {
+	background: rgba(16, 185, 129, 0.15);
+	border-color: rgba(16, 185, 129, 0.3);
+	box-shadow: 0 0 20rpx rgba(16, 185, 129, 0.1);
+}
+
+.quest-card--completed .quest-title {
+	color: #fff;
+	text-decoration: line-through;
+	opacity: 0.7;
+}
+
+/* 左侧 Checkbox */
+.quest-left { margin-right: 24rpx; }
+.magic-checkbox {
+	width: 56rpx; height: 56rpx;
+	border-radius: 50%;
+	border: 4rpx solid rgba(255, 255, 255, 0.2);
+	display: flex; align-items: center; justify-content: center;
+	transition: all 0.3s ease;
+}
+.magic-checkbox--checked {
+	background: #5affd0;
+	border-color: #5affd0;
+	box-shadow: 0 0 16rpx #5affd0;
+}
+.magic-check-icon { font-size: 32rpx; font-weight: 800; color: #0f1b2b; }
+
+/* 中间内容 */
+.quest-main { flex: 1; display: flex; flex-direction: column; gap: 10rpx; }
+.quest-title { font-size: 32rpx; font-weight: 600; color: #fff; transition: all 0.3s; }
+
+.quest-tags { display: flex; flex-wrap: wrap; gap: 10rpx; }
+.q-tag {
+	padding: 4rpx 12rpx;
+	border-radius: 10rpx;
+	font-size: 20rpx;
+	font-weight: 500;
+	display: flex; align-items: center;
+}
+.q-tag--time { background: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.8); }
+.q-tag--exp { background: rgba(110, 203, 255, 0.15); color: #6ecbff; }
+.q-tag--gold { background: rgba(255, 215, 0, 0.15); color: #ffd700; }
+
+/* 右侧部分 */
+.quest-right { 
+	display: flex; flex-direction: column; align-items: center; justify-content: space-between; 
+	gap: 16rpx; margin-left: 20rpx; min-width: 80rpx;
+}
+
+/* 连击 */
+.streak-badge { 
+	display: flex; flex-direction: column; align-items: center; 
+}
+.streak-fire { font-size: 36rpx; filter: drop-shadow(0 0 8rpx #ff6b6b); }
+.streak-count { font-size: 24rpx; font-weight: 700; color: #ff9f43; margin-top: -6rpx; }
+
+/* 操作按钮 */
+.quest-actions {
+	display: flex;
+	gap: 16rpx;
+	/* 移除原来的整体透明度，改在按钮自身设置 */
+}
+.q-action-btn {
+	font-size: 30rpx; /* 稍微调大字体 */
+	color: rgba(255, 255, 255, 0.9); /* 提高文字不透明度 */
+	padding: 10rpx; /* 增加内边距 */
+	background: rgba(255, 255, 255, 0.1); /* 添加半透明背景 */
+	border-radius: 50%; /* 设置为圆形 */
+	transition: all 0.2s ease; /* 添加过渡效果 */
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 48rpx; /* 固定宽度 */
+	height: 48rpx; /* 固定高度 */
+}
+.q-action-btn--del {
+	color: #ff7b8a; /* 保持红色 */
+	background: rgba(255, 123, 138, 0.15); /* 添加红色系半透明背景 */
+}
+
+/* 光效 */
+.quest-glow {
+	position: absolute; inset: 0;
+	background: linear-gradient(135deg, rgba(90, 255, 208, 0.1), transparent 60%);
+	pointer-events: none;
+}
+
+/* === 商店样式 === */
 .shop-grid { padding-bottom: 40rpx; }
 .shop-items { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20rpx; }
 .shop-item { padding: 20rpx; display: flex; flex-direction: column; align-items: center; gap: 10rpx; transition: transform 0.2s; border: 1rpx solid rgba(255,255,255,0.1); }
