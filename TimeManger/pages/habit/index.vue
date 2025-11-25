@@ -5,233 +5,286 @@
 				<text class="top-bar__back">◉</text>
 			</view>
 			<view class="top-bar__center">
-				<text class="top-bar__title">习惯养成</text>
-				<text class="top-bar__subtitle">每一次坚持，都在塑造更好的自己</text>
+				<text class="top-bar__title">习惯冒险</text>
 			</view>
 			<view class="top-bar__right">
 				<view class="energy-badge">
-					<text class="energy-icon">⚡</text>
-					<text class="energy-value">{{ totalEnergy }}</text>
+					<text class="energy-icon">🪙</text>
+					<text class="energy-value">{{ gold }}</text>
 				</view>
 			</view>
 		</view>
 
 		<view class="main">
-		<!-- 能量概览卡片 -->
-			<view class="energy-overview glass" :class="{ 'glass--active': pageLoaded }">
-				<view class="energy-stats">
-					<view class="energy-stat">
-						<text class="energy-stat__value">{{ activeHabits }}</text>
-						<text class="energy-stat__label">活跃习惯</text>
+			<view class="hero-card glass" :class="{ 'glass--active': pageLoaded }">
+				<view class="hero-info">
+					<view class="hero-avatar-box" @tap="activeTab = 'shop'">
+						<text class="hero-avatar">{{ currentAvatar }}</text>
+						<view class="hero-level-badge">Lv.{{ currentLevel }}</view>
 					</view>
-					<view class="energy-divider"></view>
-					<view class="energy-stat">
-						<text class="energy-stat__value">{{ longestStreak }}</text>
-						<text class="energy-stat__label">最长连续</text>
-					</view>
-					<view class="energy-divider"></view>
-					<view class="energy-stat">
-						<text class="energy-stat__value">{{ totalCheckins }}</text>
-						<text class="energy-stat__label">累计打卡</text>
-					</view>
-				</view>
-				<view class="level-progress">
-					<view class="level-progress__header">
-						<text class="level-progress__label">习惯大师 Lv.{{ currentLevel }}</text>
-						<text class="level-progress__exp">{{ currentExp }}/{{ nextLevelExp }} 经验</text>
-					</view>
-					<view class="level-progress__bar" :prop="levelProgress" :change:prop="renderjs.updateLevelProgress">
-						<view class="level-progress__fill" id="levelProgressFill"></view>
-					</view>
-				</view>
-			</view>
-
-			<!-- 本周打卡热力图 -->
-			<view class="heatmap glass" :class="{ 'glass--active': pageLoaded }">
-				<view class="card-header">
-					<text class="card-title">本周打卡</text>
-					<text class="card-sub">{{ weekCheckinCount }} 次完成</text>
-				</view>
-				<view class="heatmap-grid">
-					<view 
-						class="heatmap-cell" 
-						v-for="(day, index) in weekDays" 
-						:key="index"
-						:class="getHeatmapClass(day.count)"
-					>
-						<text class="heatmap-cell__label">{{ day.label }}</text>
-						<view class="heatmap-cell__bar">
-							<view class="heatmap-cell__fill" :style="{ height: day.height }"></view>
+					<view class="hero-stats">
+						<view class="hero-name-row">
+							<text class="hero-name">冒险者</text>
+							<text class="hero-title" v-if="currentTitle">{{ currentTitle }}</text>
 						</view>
-						<text class="heatmap-cell__count">{{ day.count }}</text>
+						<view class="progress-row">
+							<text class="progress-label">EXP</text>
+							<view class="progress-track">
+								<view class="progress-bar" :style="{ width: expPercent + '%' }"></view>
+							</view>
+							<text class="progress-text">{{ currentExp }}/{{ nextLevelExp }}</text>
+						</view>
+						<view class="hero-pet" v-if="currentPet">
+							<text>伙伴: {{ currentPet }}</text>
+						</view>
 					</view>
 				</view>
 			</view>
 
-			<!-- 习惯列表 -->
-			<view class="habits glass" :class="{ 'glass--active': pageLoaded }">
-				<view class="card-header">
-					<text class="card-title">我的习惯</text>
-					<text class="card-sub">{{ todayCheckinCount }}/{{ habits.length }} 今日完成</text>
+			<view class="game-tabs glass" :class="{ 'glass--active': pageLoaded }">
+				<view 
+					class="g-tab" 
+					:class="{ 'g-tab--active': activeTab === 'habits' }"
+					@tap="activeTab = 'habits'"
+				>
+					<text>📜 任务书</text>
 				</view>
+				<view 
+					class="g-tab" 
+					:class="{ 'g-tab--active': activeTab === 'shop' }"
+					@tap="activeTab = 'shop'"
+				>
+					<text>⛺ 补给站</text>
+				</view>
+				<view 
+					class="g-tab" 
+					:class="{ 'g-tab--active': activeTab === 'achievements' }"
+					@tap="activeTab = 'achievements'"
+				>
+					<text>🏆 荣誉室</text>
+				</view>
+			</view>
 
-				<view v-for="habit in habits" :key="habit.id" class="habit-card" :class="getHabitCardClass(habit)">
-					<view class="habit-card__main" @tap="toggleHabit(habit)">
-						<view class="habit-card__left">
-							<view class="habit-checkbox" :class="{ 'habit-checkbox--checked': habit.checkedToday }">
-								<text class="habit-checkbox__icon">{{ habit.checkedToday ? '✓' : '' }}</text>
-							</view>
-							<view class="habit-info">
-								<text class="habit-title">{{ habit.title }}</text>
-								<view class="habit-meta">
-									<text class="habit-meta__time">{{ habit.time }}</text>
-									<text class="habit-meta__energy">+{{ habit.energy }}⚡</text>
+			<scroll-view scroll-y class="tab-content">
+				
+				<view v-if="activeTab === 'habits'" class="habit-list">
+					<view class="card-header">
+						<text class="card-title">每日委托</text>
+						<text class="card-sub">{{ todayCheckinCount }}/{{ habits.length }} 完成</text>
+					</view>
+
+					<view v-if="habits.length">
+						<view v-for="habit in habits" :key="habit.id" class="habit-card" :class="getHabitCardClass(habit)">
+							<view class="habit-card__main" @tap="toggleHabit(habit)">
+								<view class="habit-card__left">
+									<view class="habit-checkbox" :class="{ 'habit-checkbox--checked': habit.checkedToday }">
+										<text class="habit-checkbox__icon">{{ habit.checkedToday ? '✓' : '' }}</text>
+									</view>
+									<view class="habit-info">
+										<text class="habit-title">{{ habit.title }}</text>
+										<view class="habit-meta">
+											<text class="habit-meta__time">{{ habit.time }}</text>
+											<text class="habit-meta__energy">+{{ habit.energy }} EXP</text>
+											<text class="habit-meta__gold" style="color:#ffd700; margin-left:10rpx;">+{{ habit.goldReward || 5 }} 🪙</text>
+										</view>
+									</view>
+								</view>
+								<view class="habit-card__right">
+									<view class="habit-streak">
+										<text class="habit-streak__value">{{ habit.streak }}</text>
+										<text class="habit-streak__label">天</text>
+									</view>
 								</view>
 							</view>
+							<view class="habit-actions">
+								<button class="habit-action-btn habit-action-btn--edit" @tap.stop="editHabit(habit)">✎</button>
+								<button class="habit-action-btn habit-action-btn--delete" @tap.stop="deleteHabit(habit)">×</button>
+							</view>
 						</view>
-						<view class="habit-card__right">
-							<view class="habit-streak">
-								<text class="habit-streak__value">{{ habit.streak }}</text>
-								<text class="habit-streak__label">天</text>
+					</view>
+					
+					<view v-else class="empty">
+						<text class="empty__icon">📜</text>
+						<text class="empty__tip">冒险日志是空的，去接点委托吧！</text>
+					</view>
+				</view>
+
+				<view v-if="activeTab === 'shop'" class="shop-grid">
+					<view class="card-header">
+						<text class="card-title">宠物伙伴</text>
+						<text class="card-sub">打卡赚金币，寻找你的搭档</text>
+					</view>
+					<view class="shop-items">
+						<view 
+							v-for="item in shopPets" 
+							:key="item.id" 
+							class="shop-item glass-lite"
+							:class="{ 'shop-item--owned': item.owned }"
+							@tap="buyOrEquip(item, 'pet')"
+						>
+							<text class="shop-icon">{{ item.icon }}</text>
+							<text class="shop-name">{{ item.name }}</text>
+							<view class="shop-btn" :class="item.owned ? 'shop-btn--owned' : ''">
+								{{ item.owned ? (currentPet === item.icon ? '休息' : '携带') : `🪙 ${item.price}` }}
 							</view>
 						</view>
 					</view>
 
-					<!-- 习惯链条可视化 -->
-					<view class="habit-chain" v-if="habit.streak >= 3">
-						<view class="habit-chain__title">
-							<text class="habit-chain__label">连续链条</text>
-							<text class="habit-chain__milestone" v-if="getNextMilestone(habit.streak)">
-								距离 {{ getNextMilestone(habit.streak) }} 天里程碑还剩 {{ getNextMilestone(habit.streak) - habit.streak }} 天
-							</text>
-						</view>
-						<view class="habit-chain__dots">
-							<view 
-								class="chain-dot" 
-								v-for="index in Math.min(habit.streak, 14)" 
-								:key="index"
-								:class="getChainDotClass(index, habit.streak)"
-							></view>
-							<text class="chain-more" v-if="habit.streak > 14">+{{ habit.streak - 14 }}</text>
-						</view>
-						<view class="habit-milestones">
-							<view 
-								class="milestone" 
-								v-for="ms in milestones" 
-								:key="ms.days"
-								:class="{ 'milestone--achieved': habit.streak >= ms.days }"
-							>
-								<text class="milestone__icon">{{ ms.icon }}</text>
-								<text class="milestone__days">{{ ms.days }}天</text>
+					<view class="card-header" style="margin-top: 40rpx;">
+						<text class="card-title">称号徽章</text>
+					</view>
+					<view class="shop-items">
+						<view 
+							v-for="item in shopTitles" 
+							:key="item.id" 
+							class="shop-item glass-lite"
+							:class="{ 'shop-item--owned': item.owned }"
+							@tap="buyOrEquip(item, 'title')"
+						>
+							<text class="shop-icon">{{ item.icon }}</text>
+							<text class="shop-name">{{ item.name }}</text>
+							<view class="shop-btn" :class="item.owned ? 'shop-btn--owned' : ''">
+								{{ item.owned ? (currentTitle === item.name ? '卸下' : '佩戴') : `🪙 ${item.price}` }}
 							</view>
 						</view>
 					</view>
+				</view>
 
-					<!-- 操作按钮 -->
-					<view class="habit-actions">
-						<button class="habit-action-btn habit-action-btn--edit" @tap.stop="editHabit(habit)">
-							<text>✎ 编辑</text>
-						</button>
-						<button class="habit-action-btn habit-action-btn--delete" @tap.stop="deleteHabit(habit)">
-							<text>× 删除</text>
-						</button>
+				<view v-if="activeTab === 'achievements'" class="achieve-list">
+					<view class="card-header">
+						<text class="card-title">生涯成就</text>
+						<text class="card-sub">累计打卡 {{ totalCheckins }} 次</text>
+					</view>
+					
+					<view 
+						v-for="ach in achievements" 
+						:key="ach.id" 
+						class="achieve-card glass-lite" 
+						:class="{ 'achieve-card--locked': !ach.unlocked }"
+					>
+						<view class="achieve-icon-box">
+							<text class="achieve-icon">{{ ach.unlocked ? ach.icon : '🔒' }}</text>
+						</view>
+						<view class="achieve-info">
+							<view class="achieve-top">
+								<text class="achieve-name">{{ ach.name }}</text>
+								<text class="achieve-status" v-if="!ach.unlocked">{{ totalCheckins }}/{{ ach.target }}</text>
+							</view>
+							<text class="achieve-desc">{{ ach.desc }}</text>
+							<view class="achieve-progress-bar">
+								<view class="achieve-fill" :style="{ width: Math.min(100, (totalCheckins / ach.target) * 100) + '%' }"></view>
+							</view>
+						</view>
 					</view>
 				</view>
+				
+				<view style="height: 200rpx;"></view>
+			</scroll-view>
+		</view>
 
-			<view v-if="!habits.length" class="empty">
-				<text class="empty__icon">🌱</text>
-				<text class="empty__tip">还没有习惯，点击右下角创建第一个习惯吧！</text>
-			</view>
+		<view class="fab" :class="{ 'fab--pulse': showAddSheet, 'fab--hidden': hideFab }" @tap.stop="toggleAddSheet">
+			<text class="fab__icon">+</text>
 		</view>
-		
-		<!-- 页面底部装饰 -->
-		<view class="page-footer">
-			<text class="page-footer__text">{{ inspirationalQuote }}</text>
-			<view class="page-footer__dots">
-				<view class="dot"></view>
-				<view class="dot"></view>
-				<view class="dot"></view>
-			</view>
-		</view>
-	</view>
 
-	<!-- 浮动添加按钮 -->
-	<view class="fab" :class="{ 'fab--pulse': showAddSheet, 'fab--hidden': hideFab }" @tap.stop="toggleAddSheet">
-		<text class="fab__icon">+</text>
-	</view>
-
-	<!-- 添加/编辑习惯表单 -->
-	<view class="sheet-mask" v-if="showAddSheet" @tap="closeAddSheet"></view>
-	<view class="sheet glass" :class="{ 'sheet--open': showAddSheet }" @touchmove.stop.prevent>
-		<view class="sheet__handle"></view>
-		<view class="sheet__header">
-			<text class="sheet__title">{{ isEditing ? '编辑习惯' : '创建新习惯' }}</text>
-			<view class="sheet__close" @tap.stop="closeAddSheet">
-				<text class="sheet__close-icon">✕</text>
-			</view>
-		</view>
-		<view class="form-field">
-			<text class="form-label">习惯名称</text>
-			<input class="form-input" placeholder="例如：每天阅读30分钟" v-model="form.title" />
-		</view>
-		<view class="form-field">
-			<text class="form-label">执行时段</text>
-			<view class="time-slots">
-				<view 
-					class="time-slot" 
-					v-for="slot in timeSlots" 
-					:key="slot.value"
-					:class="{ 'time-slot--active': form.time === slot.value }"
-					@tap="selectTimeSlot(slot.value)"
-				>
-					<text class="time-slot__icon">{{ slot.icon }}</text>
-					<text class="time-slot__label">{{ slot.label }}</text>
-					<text class="time-slot__range">{{ slot.range }}</text>
+		<view class="sheet-mask" v-if="showAddSheet" @tap="closeAddSheet"></view>
+		<view class="sheet glass" :class="{ 'sheet--open': showAddSheet }" @touchmove.stop>
+			<view class="sheet__handle"></view>
+			<view class="sheet__header">
+				<text class="sheet__title">{{ isEditing ? '编辑习惯' : '创建新习惯' }}</text>
+				<view class="sheet__close" @tap.stop="closeAddSheet">
+					<text class="sheet__close-icon">✕</text>
 				</view>
 			</view>
+			<view class="form-field">
+				<text class="form-label">习惯名称</text>
+				<input class="form-input" placeholder="例如：每天阅读30分钟" v-model="form.title" />
+			</view>
+			<view class="form-field">
+				<text class="form-label">执行时段</text>
+				<view class="time-slots">
+					<view 
+						class="time-slot" 
+						v-for="slot in timeSlots" 
+						:key="slot.value"
+						:class="{ 'time-slot--active': form.time === slot.value }"
+						@tap="selectTimeSlot(slot.value)"
+					>
+						<text class="time-slot__icon">{{ slot.icon }}</text>
+						<text class="time-slot__label">{{ slot.label }}</text>
+						<text class="time-slot__range">{{ slot.range }}</text>
+					</view>
+				</view>
+			</view>
+			<button class="sheet__action" type="primary" :disabled="!canSubmit" @tap.stop="confirmHabit">
+				{{ isEditing ? '保存修改' : '创建习惯' }}
+			</button>
 		</view>
-		<button class="sheet__action" type="primary" :disabled="!canSubmit" @tap.stop="confirmHabit">
-			{{ isEditing ? '保存修改' : '创建习惯' }}
-		</button>
-	</view>
 
-
-	<!-- 底部导航栏 -->
-	<view class="bottom-bar glass" :class="{ 'glass--active': pageLoaded }">
-		<view
-			class="bottom-bar__item"
-			v-for="item in bottomNavItems"
-			:key="item.key"
-			:class="{ 'bottom-bar__item--active': activeNav === item.key }"
-			@tap="onBottomNavTap(item)"
-		>
-			<text class="bottom-bar__icon">{{ item.icon }}</text>
-			<text class="bottom-bar__label">{{ item.label }}</text>
+		<view class="bottom-bar glass" :class="{ 'glass--active': pageLoaded }">
+			<view
+				class="bottom-bar__item"
+				v-for="item in bottomNavItems"
+				:key="item.key"
+				:class="{ 'bottom-bar__item--active': activeNav === item.key }"
+				@tap="onBottomNavTap(item)"
+			>
+				<text class="bottom-bar__icon">{{ item.icon }}</text>
+				<text class="bottom-bar__label">{{ item.label }}</text>
+			</view>
 		</view>
 	</view>
-</view>
 </template>
 
 <script>
-import { getAllAppData, saveAllAppData, updateModuleData, getModuleData } from '@/utils/dataManager.js';
+import { getAllAppData, saveAllAppData, updateModuleData } from '@/utils/dataManager.js';
 
 export default {
 	data() {
 		return {
 			pageLoaded: false,
+			activeTab: 'habits', // 默认为习惯列表
 			showAddSheet: false,
 			isEditing: false,
 			editingHabit: null,
 			hideFab: false,
 			scrollTop: 0,
 			lastScrollTop: 0,
-			scrollTimer: null, // 滚动节流定时器
-			heatmapUpdateKey: 0, // 用于触发热力图更新
-			totalEnergy: 0,
+			scrollTimer: null,
+			
+			// RPG 数据
 			currentLevel: 1,
 			currentExp: 0,
 			nextLevelExp: 100,
+			gold: 0,
+			currentAvatar: '🧙‍♂️',
+			currentPet: null,
+			currentTitle: null,
+			
 			habits: [],
+			
+			// 商店数据
+			shopPets: [
+				{ id: 'pet_cat', name: '像素猫', icon: '🐱', price: 50, owned: false },
+				{ id: 'pet_dog', name: '忠诚犬', icon: '🐶', price: 50, owned: false },
+				{ id: 'pet_dragon', name: '喷火龙', icon: '🐲', price: 200, owned: false },
+				{ id: 'pet_robot', name: '罗伯特', icon: '🤖', price: 150, owned: false },
+				{ id: 'pet_alien', name: 'ET', icon: '👽', price: 300, owned: false }
+			],
+			shopTitles: [
+				{ id: 'title_newbie', name: '见习生', icon: '🌱', price: 20, owned: false },
+				{ id: 'title_warrior', name: '自律战士', icon: '⚔️', price: 100, owned: false },
+				{ id: 'title_king', name: '习惯之王', icon: '👑', price: 500, owned: false }
+			],
+			
+			// 成就数据
+			achievements: [
+				{ id: 'ach_7', name: '坚持一周', desc: '累计打卡7次', target: 7, icon: '🥉', unlocked: false },
+				{ id: 'ach_21', name: '习惯养成', desc: '累计打卡21次', target: 21, icon: '🥈', unlocked: false },
+				{ id: 'ach_100', name: '百日筑基', desc: '累计打卡100次', target: 100, icon: '🥇', unlocked: false },
+				{ id: 'ach_king', name: '传奇', desc: '累计打卡365次', target: 365, icon: '🏆', unlocked: false }
+			],
+
+			// 原有表单数据
 			form: {
 				title: '',
 				time: '早晨'
@@ -243,30 +296,23 @@ export default {
 				{ value: '晚间', label: '晚间', icon: '🌙', range: '18:00-22:00' },
 				{ value: '全天', label: '全天', icon: '⏰', range: '全天' }
 			],
-		milestones: [
-			{ days: 7, icon: '🌱' },
-			{ days: 21, icon: '🌿' },
-			{ days: 66, icon: '🌳' },
-			{ days: 100, icon: '🏆' }
-		],
-		inspirationalQuotes: [
-			'坚持，是通往成功最短的路',
-			'每一次打卡，都在遇见更好的自己',
-			'习惯的力量，能改变一生',
-			'微小的改变，带来巨大的不同',
-			'今日的努力，是明日的习惯',
-			'养成习惯需要21天，成就自己只需坚持'
-		],
-		bottomNavItems: [
-			{ key: 'today', label: '今日', icon: '◎', target: '/pages/index/index' },
-			{ key: 'calendar', label: '日历', icon: '◉', target: '/pages/calendar/index' },
-			{ key: 'tracking', label: '番茄钟', icon: '◴', target: '/pages/pomodoro/index' },
-			{ key: 'habit', label: '习惯', icon: '△', target: '/pages/habit/index' }
-		],
-		activeNav: 'habit'
-	};
-},
+			inspirationalQuotes: [
+				'坚持，是通往成功最短的路',
+				'每一次打卡，都在遇见更好的自己',
+			],
+			bottomNavItems: [
+				{ key: 'today', label: '今日', icon: '◎', target: '/pages/index/index' },
+				{ key: 'calendar', label: '日历', icon: '◉', target: '/pages/calendar/index' },
+				{ key: 'tracking', label: '番茄钟', icon: '◴', target: '/pages/pomodoro/index' },
+				{ key: 'habit', label: '习惯', icon: '△', target: '/pages/habit/index' }
+			],
+			activeNav: 'habit'
+		};
+	},
 	computed: {
+		expPercent() {
+			return Math.min((this.currentExp / this.nextLevelExp) * 100, 100);
+		},
 		activeHabits() {
 			return this.habits.length;
 		},
@@ -275,7 +321,7 @@ export default {
 			return Math.max(...this.habits.map(h => h.streak));
 		},
 		totalCheckins() {
-			return this.habits.reduce((sum, h) => sum + h.streak, 0);
+			return this.habits.reduce((sum, h) => sum + (h.streak || 0), 0);
 		},
 		levelProgress() {
 			const percent = (this.currentExp / this.nextLevelExp) * 100;
@@ -284,160 +330,181 @@ export default {
 		todayCheckinCount() {
 			return this.habits.filter(h => h.checkedToday).length;
 		},
-		weekDays() {
-			// 依赖 heatmapUpdateKey 来触发更新
-			const _ = this.heatmapUpdateKey;
-			
-			// 获取本周的日期范围
-			const today = this.getCurrentDate();
-			const currentDay = today.getDay(); // 0=周日, 1=周一, ...
-			const weekStart = new Date(today);
-			weekStart.setDate(today.getDate() - (currentDay === 0 ? 6 : currentDay - 1)); // 本周一
-			weekStart.setHours(0, 0, 0, 0);
-			
-			// 读取打卡记录
-			let checkins = {};
-			try {
-				checkins = uni.getStorageSync('habitCheckins') || {};
-			} catch (err) {
-				console.warn('读取打卡记录失败', err);
-			}
-			
-			// 计算本周每天的打卡次数
-			const days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
-			const counts = [];
-			
-			for (let i = 0; i < 7; i++) {
-				const date = new Date(weekStart);
-				date.setDate(weekStart.getDate() + i);
-				const dateKey = this.getDateKey(date);
-				let count = 0;
-				
-				// 统计该日期所有习惯的打卡次数
-				this.habits.forEach(habit => {
-					const habitCheckins = checkins[habit.id] || {};
-					if (habitCheckins[dateKey]) {
-						count += 1;
-					}
-				});
-				
-				counts.push(count);
-			}
-			
-			const max = Math.max(...counts, 1); // 至少为1，避免除零
-			return days.map((label, index) => ({
-				label,
-				count: counts[index],
-				height: max > 0 ? `${(counts[index] / max) * 100}%` : '0%'
-			}));
+		canSubmit() {
+			return this.form.title.trim().length > 0;
 		},
-		weekCheckinCount() {
-			return this.weekDays.reduce((sum, day) => sum + day.count, 0);
-		},
-	canSubmit() {
-		return this.form.title.trim().length > 0;
+		inspirationalQuote() {
+			const index = Math.floor(Math.random() * this.inspirationalQuotes.length);
+			return this.inspirationalQuotes[index];
+		}
 	},
-	inspirationalQuote() {
-		// 随机选择一句激励语
-		const index = Math.floor(Math.random() * this.inspirationalQuotes.length);
-		return this.inspirationalQuotes[index];
-	},
-	currentDateDisplay() {
-		const date = this.getCurrentDate();
-		const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-		const weekday = weekdays[date.getDay()];
-		const month = date.getMonth() + 1;
-		const day = date.getDate();
-		return `${date.getFullYear()}年${month}月${day}日 ${weekday}`;
-	},
-},
-onLoad() {
-	this.loadLocalData();
-	this.resetDailyCheckins();
-	// 立即显示页面内容（页面可能已预加载）
-	this.pageLoaded = true;
-},
-	onShow() {
-		// 设置当前激活的导航项
-		this.activeNav = 'habit';
-		// 页面切换时立即显示内容（页面已预加载）
+	onLoad() {
+		this.loadData();
+		this.resetDailyCheckins();
 		this.pageLoaded = true;
 	},
-onPageScroll(e) {
-	if (!e) return;
-	
-	// 节流处理，减少频繁更新
-	if (this.scrollTimer) {
-		return;
-	}
-	
-	this.scrollTimer = setTimeout(() => {
-		const currentScrollTop = e.scrollTop || 0;
-		const delta = currentScrollTop - this.lastScrollTop;
-		
-		if (Math.abs(delta) < 1) {
+	onShow() {
+		this.activeNav = 'habit';
+		this.loadData();
+		this.pageLoaded = true;
+	},
+	onPageScroll(e) {
+		if (!e) return;
+		if (this.scrollTimer) return;
+		this.scrollTimer = setTimeout(() => {
+			const currentScrollTop = e.scrollTop || 0;
+			const delta = currentScrollTop - this.lastScrollTop;
+			if (Math.abs(delta) < 1) {
+				this.scrollTimer = null;
+				return;
+			}
+			if (currentScrollTop > 150 && delta > 0) {
+				this.hideFab = true;
+			} else if (delta < 0 || currentScrollTop < 100) {
+				this.hideFab = false;
+			}
+			this.lastScrollTop = currentScrollTop;
 			this.scrollTimer = null;
-			return;
-		}
-		
-		// 向下滚动超过150时隐藏FAB
-		if (currentScrollTop > 150 && delta > 0) {
-			this.hideFab = true;
-		} 
-		// 向上滚动或滚动位置小于100时显示FAB
-		else if (delta < 0 || currentScrollTop < 100) {
-			this.hideFab = false;
-		}
-		
-		this.lastScrollTop = currentScrollTop;
-		this.scrollTimer = null;
-	}, 16); // 约 60fps，16ms 一帧
-},
-	onUnload() {
-		// 清理滚动定时器
-		if (this.scrollTimer) {
-			clearTimeout(this.scrollTimer);
-			this.scrollTimer = null;
-		}
+		}, 16);
 	},
 	methods: {
-		getHabitCardClass(habit) {
-			const classes = [];
-			if (habit.checkedToday) {
-				classes.push('habit-card--checked');
-			}
-			return classes;
+		// --- 数据加载与保存 ---
+		loadData() {
+			const allData = getAllAppData();
+			const hData = allData.habits || {};
+			
+			// 基础数据
+			this.habits = Array.isArray(hData.list) ? hData.list : [];
+			this.currentLevel = hData.level || 1;
+			this.currentExp = hData.exp || 0;
+			this.nextLevelExp = hData.nextLevelExp || 100;
+			this.gold = hData.gold || 0;
+			
+			// RPG 装备数据
+			this.currentPet = hData.currentPet || null;
+			this.currentTitle = hData.currentTitle || null;
+			const ownedItems = hData.inventory || []; 
+			
+			// 同步商店状态
+			this.shopPets.forEach(p => p.owned = ownedItems.includes(p.id));
+			this.shopTitles.forEach(t => t.owned = ownedItems.includes(t.id));
+			
+			// 检查成就
+			this.checkAchievements();
 		},
-		getHeatmapClass(count) {
-			if (count === 0) return 'heatmap-cell--empty';
-			if (count <= 1) return 'heatmap-cell--low';
-			if (count <= 2) return 'heatmap-cell--medium';
-			return 'heatmap-cell--high';
+		saveData() {
+			const inventory = [
+				...this.shopPets.filter(p => p.owned).map(p => p.id),
+				...this.shopTitles.filter(t => t.owned).map(t => t.id)
+			];
+			
+			updateModuleData('habits', {
+				list: this.habits,
+				level: this.currentLevel,
+				exp: this.currentExp,
+				nextLevelExp: this.nextLevelExp,
+				gold: this.gold,
+				currentPet: this.currentPet,
+				currentTitle: this.currentTitle,
+				inventory: inventory
+			});
 		},
-		getChainDotClass(index, streak) {
-			const classes = ['chain-dot--filled'];
-			if (index === streak && streak >= 7) {
-				classes.push('chain-dot--pulse');
-			}
-			if (streak >= 21 && index > streak - 5) {
-				classes.push('chain-dot--gold');
-			}
-			return classes;
+		saveLocalData() {
+			this.saveData(); // Alias for compatibility
 		},
-		getNextMilestone(streak) {
-			const milestones = [7, 21, 66, 100];
-			for (let ms of milestones) {
-				if (streak < ms) {
-					return ms;
+
+		// --- RPG 逻辑 ---
+		buyOrEquip(item, type) {
+			if (item.owned) {
+				if (type === 'pet') {
+					this.currentPet = this.currentPet === item.icon ? null : item.icon;
+					uni.showToast({ title: this.currentPet ? '宠物已跟随' : '宠物已休息', icon: 'none' });
+				} else {
+					this.currentTitle = this.currentTitle === item.name ? null : item.name;
+					uni.showToast({ title: this.currentTitle ? '称号已佩戴' : '称号已卸下', icon: 'none' });
+				}
+				this.saveData();
+			} else {
+				if (this.gold >= item.price) {
+					uni.showModal({
+						title: '补给站',
+						content: `确定花费 ${item.price} 金币购买 "${item.name}" 吗？`,
+						success: (res) => {
+							if (res.confirm) {
+								this.gold -= item.price;
+								item.owned = true;
+								this.saveData();
+								uni.showToast({ title: '购买成功！', icon: 'success' });
+							}
+						}
+					});
+				} else {
+					uni.showToast({ title: '金币不足，快去完成委托吧！', icon: 'none' });
 				}
 			}
-			return null;
 		},
+		checkAchievements() {
+			const total = this.totalCheckins;
+			this.achievements.forEach(ach => {
+				if (!ach.unlocked && total >= ach.target) {
+					ach.unlocked = true;
+					uni.showToast({ title: `🏆 解锁成就: ${ach.name}`, icon: 'none', duration: 3000 });
+				}
+			});
+		},
+		gainExp(amount) {
+			this.currentExp += amount;
+			if (this.currentExp >= this.nextLevelExp) {
+				this.currentLevel++;
+				this.currentExp -= this.nextLevelExp;
+				this.nextLevelExp = Math.floor(this.nextLevelExp * 1.2);
+				uni.showModal({
+					title: '🎉 恭喜升级！',
+					content: `你已经升到了 Lv.${this.currentLevel}！`,
+					showCancel: false
+				});
+			}
+		},
+
+		// --- 习惯列表交互 ---
+		getHabitCardClass(habit) {
+			return habit.checkedToday ? 'habit-card--checked' : '';
+		},
+		toggleHabit(habit) {
+			const todayKey = this.buildTodayKey();
+			const goldReward = habit.goldReward || 5;
+			const expReward = habit.energy || 10;
+			
+			if (habit.checkedToday) {
+				habit.checkedToday = false;
+				habit.streak = Math.max(0, habit.streak - 1);
+				this.gold = Math.max(0, this.gold - goldReward);
+				this.currentExp = Math.max(0, this.currentExp - expReward);
+				
+				let checkins = uni.getStorageSync('habitCheckins') || {};
+				if (checkins[habit.id]) delete checkins[habit.id][todayKey];
+				uni.setStorageSync('habitCheckins', checkins);
+			} else {
+				habit.checkedToday = true;
+				habit.streak++;
+				this.gold += goldReward;
+				this.gainExp(expReward);
+				
+				let checkins = uni.getStorageSync('habitCheckins') || {};
+				if (!checkins[habit.id]) checkins[habit.id] = {};
+				checkins[habit.id][todayKey] = true;
+				uni.setStorageSync('habitCheckins', checkins);
+				
+				this.checkAchievements();
+				uni.showToast({ title: `+${goldReward}金币 +${expReward}经验`, icon: 'none' });
+			}
+			this.saveData();
+		},
+		
+		// --- 表单操作 (保留原有逻辑) ---
 		toggleAddSheet() {
 			this.showAddSheet = !this.showAddSheet;
-			if (!this.showAddSheet) {
-				this.resetForm();
-			}
+			if (!this.showAddSheet) this.resetForm();
 		},
 		closeAddSheet() {
 			this.showAddSheet = false;
@@ -452,84 +519,6 @@ onPageScroll(e) {
 		selectTimeSlot(value) {
 			this.form.time = value;
 		},
-		toggleHabit(habit) {
-			const today = this.buildTodayKey();
-			
-			if (habit.checkedToday) {
-				// 取消打卡
-				habit.checkedToday = false;
-				habit.streak = Math.max(0, habit.streak - 1);
-				this.totalEnergy -= habit.energy;
-				this.currentExp = Math.max(0, this.currentExp - habit.energy);
-				
-				// 删除打卡记录
-				try {
-					let checkins = uni.getStorageSync('habitCheckins') || {};
-					if (!checkins[habit.id]) {
-						checkins[habit.id] = {};
-					}
-					delete checkins[habit.id][today];
-					uni.setStorageSync('habitCheckins', checkins);
-					// 触发热力图更新
-					this.heatmapUpdateKey += 1;
-				} catch (err) {
-					console.warn('删除打卡记录失败', err);
-				}
-				
-				uni.showToast({
-					title: '已取消打卡',
-					icon: 'none'
-				});
-			} else {
-				// 完成打卡
-				habit.checkedToday = true;
-				habit.streak += 1;
-				this.totalEnergy += habit.energy;
-				this.currentExp += habit.energy;
-				
-				// 记录打卡
-				try {
-					let checkins = uni.getStorageSync('habitCheckins') || {};
-					if (!checkins[habit.id]) {
-						checkins[habit.id] = {};
-					}
-					checkins[habit.id][today] = true;
-					uni.setStorageSync('habitCheckins', checkins);
-					// 触发热力图更新
-					this.heatmapUpdateKey += 1;
-				} catch (err) {
-					console.warn('保存打卡记录失败', err);
-				}
-				
-				// 检查升级
-				if (this.currentExp >= this.nextLevelExp) {
-					this.currentLevel += 1;
-					this.currentExp = this.currentExp - this.nextLevelExp;
-					this.nextLevelExp = Math.floor(this.nextLevelExp * 1.5);
-					uni.showModal({
-						title: '恭喜升级！',
-						content: `你已达到 Lv.${this.currentLevel}，继续保持！`,
-						showCancel: false
-					});
-				} else {
-					// 检查里程碑
-					const milestones = [7, 21, 66, 100];
-					if (milestones.includes(habit.streak)) {
-						uni.showModal({
-							title: `🎉 里程碑达成！`,
-							content: `恭喜！"${habit.title}" 已连续坚持 ${habit.streak} 天！`,
-							showCancel: false
-						});
-					} else {
-						uni.showToast({
-							title: `+${habit.energy} 能量！`,
-							icon: 'none'
-						});
-					}
-				}
-			}
-			this.saveLocalData();
-		},
 		editHabit(habit) {
 			this.isEditing = true;
 			this.editingHabit = habit;
@@ -540,241 +529,71 @@ onPageScroll(e) {
 		deleteHabit(habit) {
 			uni.showModal({
 				title: '确认删除',
-				content: `确定要删除习惯"${habit.title}"吗？这将清除所有打卡记录并扣除相关经验。`,
+				content: '确定要放弃这个习惯吗？',
 				success: (res) => {
 					if (res.confirm) {
-						// 计算该习惯的历史贡献（根据连续天数估算）
-						// 假设每天打卡获得该习惯的能量值作为经验
-						const totalContribution = habit.streak * habit.energy;
-						
-						// 扣除经验和能量
-						this.totalEnergy = Math.max(0, this.totalEnergy - totalContribution);
-						this.currentExp = Math.max(0, this.currentExp - totalContribution);
-						
-						// 如果经验扣除后导致降级，需要处理
-						while (this.currentLevel > 1 && this.currentExp < 0) {
-							this.currentLevel -= 1;
-							// 计算上一级所需的经验
-							let prevLevelExp = 100; // 初始经验
-							for (let i = 1; i < this.currentLevel; i++) {
-								prevLevelExp = Math.floor(prevLevelExp * 1.5);
-							}
-							this.currentExp = prevLevelExp + this.currentExp;
-							this.nextLevelExp = Math.floor(prevLevelExp * 1.5);
-						}
-						
-						// 删除习惯
-						const index = this.habits.findIndex(h => h.id === habit.id);
-						if (index !== -1) {
-							this.habits.splice(index, 1);
-						}
-						
-						// 删除该习惯的打卡记录
-						try {
-							let checkins = uni.getStorageSync('habitCheckins') || {};
-							delete checkins[habit.id];
-							uni.setStorageSync('habitCheckins', checkins);
-							// 触发热力图更新
-							this.heatmapUpdateKey += 1;
-						} catch (err) {
-							console.warn('删除打卡记录失败', err);
-						}
-						
-						this.saveLocalData();
-						uni.showToast({
-							title: '已删除',
-							icon: 'success'
-						});
+						const idx = this.habits.findIndex(h => h.id === habit.id);
+						if (idx > -1) this.habits.splice(idx, 1);
+						this.saveData();
 					}
 				}
 			});
 		},
 		confirmHabit() {
 			if (!this.canSubmit) return;
-
-			const defaultEnergy = 15; // 统一能量值
+			const defaultEnergy = 15; 
 			
 			if (this.isEditing && this.editingHabit) {
-				// 编辑模式
 				this.editingHabit.title = this.form.title;
 				this.editingHabit.time = this.form.time;
-				// 保持原有能量值，不修改
-				uni.showToast({
-					title: '修改成功',
-					icon: 'success'
-				});
+				uni.showToast({ title: '修改成功', icon: 'success' });
 			} else {
-				// 创建模式
 				const newHabit = {
 					id: Date.now(),
 					title: this.form.title,
 					time: this.form.time,
 					energy: defaultEnergy,
+					goldReward: 5,
 					streak: 0,
 					checkedToday: false
 				};
 				this.habits.push(newHabit);
-				uni.showToast({
-					title: '习惯创建成功！',
-					icon: 'success'
-				});
+				uni.showToast({ title: '创建成功！', icon: 'success' });
 			}
-			
-			this.saveLocalData();
+			this.saveData();
 			this.closeAddSheet();
 		},
-	saveLocalData() {
-		try {
-			// 使用统一数据管理器保存数据
-			const allData = getAllAppData();
+
+		// --- 辅助方法 ---
+		onBottomNavTap(item) { if (item.target) uni.switchTab({ url: item.target }); },
+		goBackToHome() { uni.switchTab({ url: '/pages/index/index' }); },
+		getCurrentDate() { return new Date(); },
+		buildTodayKey() {
+			const d = new Date();
+			return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+		},
+		resetDailyCheckins() {
+			const today = this.buildTodayKey();
+			const last = uni.getStorageSync('lastCheckinDate');
+			let checkins = uni.getStorageSync('habitCheckins') || {};
 			
-			// 读取打卡记录
-			let checkins = {};
-			try {
-				checkins = uni.getStorageSync('habitCheckins') || {};
-				// 如果统一存储中有打卡记录，优先使用
-				if (allData.habits && allData.habits.checkins) {
-					checkins = allData.habits.checkins;
-				}
-			} catch (err) {
-				console.warn('读取打卡记录失败', err);
+			if (last !== today) {
+				this.habits.forEach(h => {
+					const hCheckins = checkins[h.id] || {};
+					h.checkedToday = !!hCheckins[today];
+				});
+				uni.setStorageSync('lastCheckinDate', today);
+				this.saveData();
+			} else {
+				this.habits.forEach(h => {
+					const hCheckins = checkins[h.id] || {};
+					h.checkedToday = !!hCheckins[today];
+				});
 			}
-			
-			// 更新习惯数据（包括等级和经验，这些会显示在右上角）
-			allData.habits = {
-				list: this.habits,
-				energy: this.totalEnergy,        // 右上角显示的能量值
-				level: this.currentLevel,        // 等级显示
-				exp: this.currentExp,            // 经验值显示
-				nextLevelExp: this.nextLevelExp,  // 下一级所需经验
-				checkins: checkins,
-				lastCheckinDate: this.buildTodayKey(),
-				mockDate: allData.habits?.mockDate || null
-			};
-			
-			// 保存到统一存储
-			saveAllAppData(allData);
-			
-			// 兼容旧存储（保持向后兼容）
-			uni.setStorageSync('habits', this.habits);
-			uni.setStorageSync('habitEnergy', this.totalEnergy);
-			uni.setStorageSync('habitLevel', this.currentLevel);
-			uni.setStorageSync('habitExp', this.currentExp);
-			uni.setStorageSync('habitNextLevelExp', this.nextLevelExp);
-			uni.setStorageSync('lastCheckinDate', this.buildTodayKey());
-		} catch (err) {
-			console.error('保存习惯数据失败:', err);
-		}
-	},
-	loadLocalData() {
-		try {
-			// 使用统一数据管理器加载数据
-			const allData = getAllAppData();
-			const habitsData = allData.habits || {};
-			
-			// 加载习惯列表
-			if (habitsData.list && Array.isArray(habitsData.list)) {
-				this.habits = habitsData.list;
-			}
-			
-			// 加载等级和经验数据（右上角显示）
-			if (typeof habitsData.energy === 'number') {
-				this.totalEnergy = habitsData.energy;
-			}
-			if (typeof habitsData.level === 'number') {
-				this.currentLevel = habitsData.level;
-			}
-			if (typeof habitsData.exp === 'number') {
-				this.currentExp = habitsData.exp;
-			}
-			if (typeof habitsData.nextLevelExp === 'number') {
-				this.nextLevelExp = habitsData.nextLevelExp;
-			}
-			
-			// 兼容旧存储（如果统一存储中没有数据，尝试从旧存储加载）
-			if (!habitsData.list || habitsData.list.length === 0) {
-				const savedHabits = uni.getStorageSync('habits');
-				const savedEnergy = uni.getStorageSync('habitEnergy');
-				const savedLevel = uni.getStorageSync('habitLevel');
-				const savedExp = uni.getStorageSync('habitExp');
-				const savedNextLevelExp = uni.getStorageSync('habitNextLevelExp');
-				
-				if (savedHabits && Array.isArray(savedHabits)) {
-					this.habits = savedHabits;
-				}
-				if (typeof savedEnergy === 'number') {
-					this.totalEnergy = savedEnergy;
-				}
-				if (typeof savedLevel === 'number') {
-					this.currentLevel = savedLevel;
-				}
-				if (typeof savedExp === 'number') {
-					this.currentExp = savedExp;
-				}
-				if (typeof savedNextLevelExp === 'number') {
-					this.nextLevelExp = savedNextLevelExp;
-				}
-			}
-		} catch (err) {
-			console.error('加载习惯数据失败:', err);
-		}
-	},
-	resetDailyCheckins() {
-		const today = this.buildTodayKey();
-		const lastCheckinDate = uni.getStorageSync('lastCheckinDate');
-		
-		// 读取打卡记录
-		let checkins = {};
-		try {
-			checkins = uni.getStorageSync('habitCheckins') || {};
-		} catch (err) {
-			console.warn('读取打卡记录失败', err);
-		}
-		
-		// 如果是新的一天，重置所有习惯的checkedToday状态
-		if (lastCheckinDate !== today) {
-			this.habits.forEach(habit => {
-				// 从打卡记录中恢复今天的打卡状态
-				const habitCheckins = checkins[habit.id] || {};
-				habit.checkedToday = !!habitCheckins[today];
-			});
-			uni.setStorageSync('lastCheckinDate', today);
-			this.saveLocalData();
-		} else {
-			// 即使是同一天，也要从打卡记录中恢复状态（防止数据不一致）
-			this.habits.forEach(habit => {
-				const habitCheckins = checkins[habit.id] || {};
-				habit.checkedToday = !!habitCheckins[today];
-			});
-		}
-	},
-	getCurrentDate() {
-		return new Date();
-	},
-	buildTodayKey() {
-		const date = this.getCurrentDate();
-		const year = date.getFullYear();
-		const month = String(date.getMonth() + 1).padStart(2, '0');
-		const day = String(date.getDate()).padStart(2, '0');
-		return `${year}-${month}-${day}`;
-	},
-	getDateKey(date) {
-		const year = date.getFullYear();
-		const month = String(date.getMonth() + 1).padStart(2, '0');
-		const day = String(date.getDate()).padStart(2, '0');
-		return `${year}-${month}-${day}`;
-	},
-	goBackToHome() {
-		uni.switchTab({ url: '/pages/index/index' });
-	},
-	onBottomNavTap(item) {
-		if (item.key === this.activeNav) {
-			return;
-		}
-		if (item.target) {
-			uni.switchTab({ url: item.target });
-		}
-	}
+		},
+		// 保留链条动画相关
+		getChainDotClass(index, streak) { return ['chain-dot--filled']; },
+		getNextMilestone(streak) { return null; }
 	}
 };
 </script>
@@ -786,24 +605,12 @@ export default {
 			const fill = ownerInstance.$el.querySelector('#levelProgressFill');
 			if (fill && newValue) {
 				requestAnimationFrame(() => {
-					// 使用 transform 替代 width 变化，性能更好
 					const percentNum = parseFloat(newValue) || 0;
 					fill.style.width = '100%';
 					fill.style.transform = `scaleX(${percentNum / 100})`;
 					fill.style.transformOrigin = 'left';
 				});
 			}
-		},
-		updateHeatmap(newValue, oldValue, ownerInstance, instance) {
-			if (!newValue || !Array.isArray(newValue)) return;
-			requestAnimationFrame(() => {
-				newValue.forEach((day, index) => {
-					const fill = ownerInstance.$el.querySelector(`[data-index="${index}"]`);
-					if (fill && day.height) {
-						fill.style.height = day.height;
-					}
-				});
-			});
 		}
 	}
 };
@@ -811,1066 +618,160 @@ export default {
 
 <style scoped>
 .page {
-	position: relative;
-	min-height: 100vh;
+	position: relative; min-height: 100vh;
 	background: linear-gradient(160deg, #0f1b2b 0%, #1b2d45 55%, #18323e 100%);
-	color: #f6f7fb;
-	overflow: hidden;
-	padding-bottom: 200rpx;
+	color: #f6f7fb; overflow: hidden; padding-bottom: 200rpx;
 }
 
 .glass {
 	background: rgba(255, 255, 255, 0.12);
 	border: 1rpx solid rgba(255, 255, 255, 0.18);
 	border-radius: 32rpx;
-	box-shadow: 0 26rpx 70rpx rgba(9, 20, 35, 0.55),
-		inset 0 1rpx 0 rgba(255, 255, 255, 0.1);
-	transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1),
-		box-shadow 0.6s cubic-bezier(0.16, 1, 0.3, 1),
-		opacity 0.6s ease;
-	opacity: 0;
-	transform: translateY(30rpx);
+	box-shadow: 0 26rpx 70rpx rgba(9, 20, 35, 0.55);
+	opacity: 0; transform: translateY(30rpx);
+	transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
+.glass--active { opacity: 1; transform: translateY(0); }
+.glass-lite { background: rgba(255, 255, 255, 0.06); border: 1rpx solid rgba(255, 255, 255, 0.1); border-radius: 24rpx; }
 
-.glass--active {
-	opacity: 1;
-	transform: translateY(0);
-}
-
+/* 顶部栏 */
 .top-bar {
-	position: relative;
-	margin: 60rpx 40rpx 24rpx;
-	height: 140rpx;
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: 0 30rpx;
-	z-index: 3;
+	margin: 60rpx 40rpx 24rpx; height: 120rpx;
+	display: flex; align-items: center; justify-content: space-between; padding: 0 30rpx;
 }
-
-.top-bar__left {
-	width: 80rpx;
-}
-
-.top-bar__back {
-	font-size: 40rpx;
-	color: rgba(255,255,255,0.8);
-}
-
-.top-bar__center {
-	flex: 1;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 8rpx;
-}
-
-.top-bar__title {
-	font-size: 42rpx;
-	font-weight: 600;
-	letter-spacing: 4rpx;
-	color: #f9fbff;
-}
-
-.top-bar__subtitle {
-	font-size: 22rpx;
-	color: rgba(255,255,255,0.6);
-	letter-spacing: 1rpx;
-}
-
-.top-bar__right {
-	width: 120rpx;
-	display: flex;
-	justify-content: flex-end;
-}
-
+.top-bar__back { font-size: 44rpx; color: rgba(255,255,255,0.8); }
+.top-bar__title { font-size: 36rpx; font-weight: 600; letter-spacing: 4rpx; }
 .energy-badge {
-	display: flex;
-	align-items: center;
-	gap: 8rpx;
-	padding: 12rpx 20rpx;
-	background: rgba(255,215,0,0.15);
-	border: 1rpx solid rgba(255,215,0,0.3);
-	border-radius: 999rpx;
-}
-
-.energy-icon {
-	font-size: 28rpx;
-}
-
-.energy-value {
-	font-size: 26rpx;
-	font-weight: 600;
-	color: #ffd700;
-}
-
-
-.main {
-	position: relative;
-	padding: 0 40rpx;
-	padding-bottom: calc(240rpx + env(safe-area-inset-bottom));
-	box-sizing: border-box;
-	z-index: 2;
-}
-
-/* 底部渐变遮罩 */
-.main::after {
-	content: '';
-	position: fixed;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	height: 200rpx;
-	background: linear-gradient(to top, rgba(15, 27, 43, 0.95) 0%, rgba(15, 27, 43, 0.6) 40%, transparent 100%);
-	pointer-events: none;
-	z-index: 1;
-}
-
-/* 能量概览 */
-.energy-overview {
-	padding: 40rpx 32rpx;
-	margin-bottom: 32rpx;
-}
-
-.energy-stats {
-	display: flex;
-	justify-content: space-around;
-	align-items: center;
-	margin-bottom: 40rpx;
-}
-
-.energy-overview.glass--active .energy-stat {
-	animation: float-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.energy-overview.glass--active .energy-stat:nth-of-type(1) {
-	animation-delay: 0.05s;
-}
-
-.energy-overview.glass--active .energy-stat:nth-of-type(2) {
-	animation-delay: 0.15s;
-}
-
-.energy-overview.glass--active .energy-stat:nth-of-type(3) {
-	animation-delay: 0.25s;
-}
-
-.energy-stat {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 12rpx;
-}
-
-.energy-stat__value {
-	font-size: 48rpx;
-	font-weight: 700;
-	background: linear-gradient(135deg, #6ecbff, #5affd0);
-	-webkit-background-clip: text;
-	-webkit-text-fill-color: transparent;
-	background-clip: text;
-}
-
-.energy-stat__label {
-	font-size: 24rpx;
-	color: rgba(255,255,255,0.65);
-}
-
-.energy-divider {
-	width: 2rpx;
-	height: 60rpx;
-	background: rgba(255,255,255,0.15);
-}
-
-.level-progress {
-	display: flex;
-	flex-direction: column;
-	gap: 16rpx;
-}
-
-.level-progress__header {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-}
-
-.level-progress__label {
-	font-size: 28rpx;
-	font-weight: 600;
-	color: #ffd700;
-}
-
-.level-progress__exp {
-	font-size: 24rpx;
-	color: rgba(255,255,255,0.6);
-}
-
-.level-progress__bar {
-	height: 20rpx;
-	background: rgba(255,255,255,0.12);
-	border-radius: 999rpx;
-	overflow: hidden;
-}
-
-.level-progress__fill {
-	width: 100%;
-	height: 100%;
-	background: linear-gradient(90deg, #ffd700, #ffed4e);
-	border-radius: 999rpx;
-	transform-origin: left;
-	transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-	animation: shimmer 3.2s ease-in-out infinite alternate;
-}
-
-/* 热力图 */
-.heatmap {
-	padding: 40rpx 32rpx;
-	margin-bottom: 32rpx;
-}
-
-.card-header {
-	display: flex;
-	justify-content: space-between;
-	align-items: baseline;
-	margin-bottom: 32rpx;
-}
-
-.card-title {
-	font-size: 36rpx;
-	font-weight: 600;
-}
-
-.card-sub {
-	font-size: 24rpx;
-	color: rgba(255,255,255,0.65);
-}
-
-.heatmap-grid {
-	display: flex;
-	justify-content: space-between;
-	gap: 16rpx;
-}
-
-.heatmap-cell {
-	flex: 1;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 12rpx;
-}
-
-.heatmap.glass--active .heatmap-cell {
-	animation: float-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.heatmap.glass--active .heatmap-cell:nth-of-type(1) {
-	animation-delay: 0.05s;
-}
-
-.heatmap.glass--active .heatmap-cell:nth-of-type(2) {
-	animation-delay: 0.1s;
-}
-
-.heatmap.glass--active .heatmap-cell:nth-of-type(3) {
-	animation-delay: 0.15s;
-}
-
-.heatmap.glass--active .heatmap-cell:nth-of-type(4) {
-	animation-delay: 0.2s;
-}
-
-.heatmap.glass--active .heatmap-cell:nth-of-type(5) {
-	animation-delay: 0.25s;
-}
-
-.heatmap.glass--active .heatmap-cell:nth-of-type(6) {
-	animation-delay: 0.3s;
-}
-
-.heatmap.glass--active .heatmap-cell:nth-of-type(7) {
-	animation-delay: 0.35s;
-}
-
-.heatmap-cell__label {
-	font-size: 22rpx;
-	color: rgba(255,255,255,0.6);
-}
-
-.heatmap-cell__bar {
-	width: 100%;
-	height: 120rpx;
-	background: rgba(255,255,255,0.08);
-	border-radius: 12rpx;
-	position: relative;
-	overflow: hidden;
-}
-
-.heatmap-cell__fill {
-	position: absolute;
-	bottom: 0;
-	left: 0;
-	right: 0;
-	background: linear-gradient(180deg, #5affd0, #4db2ff);
-	border-radius: 12rpx 12rpx 0 0;
-	transition: height 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.heatmap-cell--high .heatmap-cell__fill {
-	background: linear-gradient(180deg, #5affd0, #39acff);
-}
-
-.heatmap-cell--medium .heatmap-cell__fill {
-	background: linear-gradient(180deg, #6ecbff, #4d9aff);
-}
-
-.heatmap-cell--low .heatmap-cell__fill {
-	background: linear-gradient(180deg, #7d9fff, #6a7aff);
-}
-
-.heatmap-cell__count {
-	font-size: 26rpx;
-	font-weight: 600;
-	color: #ffffff;
-}
-
-/* 习惯列表 */
-.habits {
-	padding: 40rpx 32rpx 60rpx;
-	margin-bottom: 40rpx;
-}
-
-.habits.glass--active .habit-card {
-	animation: list-in 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.habits.glass--active .habit-card:nth-child(1) {
-	animation-delay: 0.05s;
-}
-
-.habits.glass--active .habit-card:nth-child(2) {
-	animation-delay: 0.1s;
-}
-
-.habits.glass--active .habit-card:nth-child(3) {
-	animation-delay: 0.15s;
-}
-
-.habits.glass--active .habit-card:nth-child(4) {
-	animation-delay: 0.2s;
-}
-
-.habits.glass--active .habit-card:nth-child(5) {
-	animation-delay: 0.25s;
-}
-
-.habits.glass--active .habit-card:nth-child(6) {
-	animation-delay: 0.3s;
-}
-
-.habit-card {
-	margin-bottom: 28rpx;
-	padding: 32rpx;
-	border-radius: 28rpx;
-	background: rgba(255,255,255,0.06);
-	border: 1rpx solid rgba(255,255,255,0.1);
-	transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.habit-card--checked {
-	background: rgba(90,255,208,0.12);
-	border-color: rgba(90,255,208,0.3);
-}
-
-.habit-card__main {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	margin-bottom: 24rpx;
-}
-
-.habit-card__left {
-	display: flex;
-	align-items: center;
-	gap: 24rpx;
-	flex: 1;
-}
-
-.habit-checkbox {
-	width: 52rpx;
-	height: 52rpx;
-	border-radius: 50%;
-	border: 3rpx solid rgba(255,255,255,0.3);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	transition: all 0.3s ease;
-}
-
-.habit-checkbox--checked {
-	border-color: #5affd0;
-	background: #5affd0;
-}
-
-.habit-checkbox__icon {
-	font-size: 28rpx;
-	color: #0f1b2b;
-	font-weight: 700;
-}
-
-.habit-info {
-	display: flex;
-	flex-direction: column;
-	gap: 10rpx;
-}
-
-.habit-title {
-	font-size: 30rpx;
-	font-weight: 500;
-	color: #ffffff;
-}
-
-.habit-meta {
-	display: flex;
-	align-items: center;
-	gap: 16rpx;
-	flex-wrap: wrap;
-}
-
-.habit-meta__time {
-	font-size: 24rpx;
-	color: rgba(255,255,255,0.6);
-}
-
-.habit-meta__energy {
-	font-size: 24rpx;
-	color: #ffd700;
-	font-weight: 600;
-}
-
-.habit-card__right {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-}
-
-.habit-streak {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	padding: 12rpx 20rpx;
-	background: rgba(255,215,0,0.15);
-	border-radius: 20rpx;
-	min-width: 80rpx;
-}
-
-.habit-streak__value {
-	font-size: 36rpx;
-	font-weight: 700;
-	color: #ffd700;
-}
-
-.habit-streak__label {
-	font-size: 20rpx;
-	color: rgba(255,215,0,0.8);
-}
-
-/* 习惯链条 */
-.habit-chain {
-	margin-top: 24rpx;
-	padding: 24rpx;
-	background: rgba(255,255,255,0.04);
-	border-radius: 20rpx;
-	border: 1rpx solid rgba(255,255,255,0.08);
-}
-
-.habit-chain__title {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	margin-bottom: 20rpx;
-}
-
-.habit-chain__label {
-	font-size: 26rpx;
-	font-weight: 600;
-	color: rgba(255,255,255,0.9);
-}
-
-.habit-chain__milestone {
-	font-size: 22rpx;
-	color: rgba(255,255,255,0.5);
-}
-
-.habit-chain__dots {
-	display: flex;
-	align-items: center;
-	gap: 10rpx;
-	flex-wrap: wrap;
-	margin-bottom: 20rpx;
-}
-
-.chain-dot {
-	width: 32rpx;
-	height: 32rpx;
-	border-radius: 50%;
-	background: rgba(255,255,255,0.2);
-	transition: all 0.3s ease;
-}
-
-.chain-dot--filled {
-	background: linear-gradient(135deg, #5affd0, #39acff);
-	box-shadow: 0 4rpx 12rpx rgba(90,255,208,0.4);
-}
-
-.chain-dot--gold {
-	background: linear-gradient(135deg, #ffd700, #ffed4e);
-	box-shadow: 0 4rpx 12rpx rgba(255,215,0,0.5);
-}
-
-.chain-dot--pulse {
-	animation: pulse 1.5s infinite;
-}
-
-@keyframes pulse {
-	0%, 100% {
-		transform: scale(1);
-		opacity: 1;
-	}
-	50% {
-		transform: scale(1.2);
-		opacity: 0.8;
-	}
-}
-
-.chain-more {
-	font-size: 24rpx;
-	color: rgba(255,255,255,0.6);
-	padding: 4rpx 12rpx;
-	background: rgba(255,255,255,0.1);
-	border-radius: 999rpx;
-}
-
-.habit-milestones {
-	display: flex;
-	justify-content: space-around;
-	gap: 12rpx;
-}
-
-.milestone {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 8rpx;
-	padding: 12rpx 16rpx;
-	background: rgba(255,255,255,0.05);
-	border-radius: 16rpx;
-	opacity: 0.4;
-	transition: all 0.3s ease;
-}
-
-.milestone--achieved {
-	opacity: 1;
-	background: rgba(90,255,208,0.15);
-	border: 1rpx solid rgba(90,255,208,0.3);
-}
-
-.milestone__icon {
-	font-size: 32rpx;
-}
-
-.milestone__days {
-	font-size: 20rpx;
-	color: rgba(255,255,255,0.8);
-}
-
-/* 习惯操作按钮 */
-.habit-actions {
-	display: flex;
-	gap: 16rpx;
-	margin-top: 20rpx;
-	padding-top: 20rpx;
-	border-top: 1rpx solid rgba(255,255,255,0.08);
-}
-
-.habit-action-btn {
-	flex: 1;
-	height: 64rpx;
-	line-height: 64rpx;
-	border-radius: 16rpx;
-	font-size: 24rpx;
-	background: rgba(255,255,255,0.06);
-	border: 1rpx solid rgba(255,255,255,0.1);
-	color: rgba(255,255,255,0.8);
-	transition: all 0.25s ease;
-}
-
-.habit-action-btn::after {
-	border: none;
-}
-
-.habit-action-btn--edit:active {
-	background: rgba(110,203,255,0.2);
-	color: #6ecbff;
-}
-
-.habit-action-btn--delete:active {
-	background: rgba(255,123,138,0.2);
-	color: #ff7b8a;
-}
-
-.empty {
-	padding: 100rpx 0;
-	text-align: center;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 20rpx;
-}
-
-.empty__icon {
-	font-size: 80rpx;
-	opacity: 0.6;
-}
-
-.empty__tip {
-	font-size: 26rpx;
-	color: rgba(255,255,255,0.6);
-	line-height: 1.6;
-}
-
-/* 浮动按钮 */
-.fab {
-	position: fixed;
-	width: 140rpx;
-	height: 140rpx;
-	border-radius: 70rpx;
-	background: linear-gradient(135deg, rgba(90,255,208,0.9), rgba(110,203,255,0.9));
-	box-shadow: 0 28rpx 46rpx rgba(10, 20, 35, 0.55);
-	bottom: calc(200rpx + constant(safe-area-inset-bottom));
-	bottom: calc(200rpx + env(safe-area-inset-bottom));
-	right: 60rpx;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	color: #0f1b2b;
-	font-size: 90rpx;
-	font-weight: 400;
-	z-index: 10;
-	overflow: visible;
-	transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
-		box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1),
-		opacity 0.3s ease;
-}
-
-.fab::after {
-	content: '';
-	position: absolute;
-	inset: -18rpx;
-	border-radius: inherit;
-	background: radial-gradient(circle, rgba(90,255,208,0.55), rgba(15,27,43,0));
-	opacity: 0.65;
-	filter: blur(18rpx);
-	z-index: -1;
-	animation: fab-glow 4s ease-in-out infinite;
-	pointer-events: none;
-}
-
-.fab--pulse {
-	transform: scale(1.06);
-	box-shadow: 0 32rpx 56rpx rgba(8, 16, 30, 0.55);
-}
-
-.fab--hidden {
-	opacity: 0 !important;
-	pointer-events: none !important;
-	transform: translateY(30rpx) scale(0.8) !important;
-}
-
-.fab__icon {
-	margin-top: -6rpx;
-}
-
-/* 表单弹窗 */
-.sheet-mask {
-	position: fixed;
-	left: 0;
-	top: 0;
-	width: 100%;
-	height: 100%;
-	background: rgba(10,17,28,0.85);
-	z-index: 11;
-	animation: fade-in 0.4s ease;
-}
-
-@keyframes fade-in {
-	0% {
-		opacity: 0;
-	}
-	100% {
-		opacity: 1;
-	}
-}
-
-@keyframes float-in {
-	0% {
-		opacity: 0;
-		transform: translateY(50rpx) scale(0.96);
-	}
-	100% {
-		opacity: 1;
-		transform: translateY(0) scale(1);
-	}
-}
-
-@keyframes list-in {
-	0% {
-		opacity: 0;
-		transform: translateY(40rpx) scale(0.98);
-	}
-	100% {
-		opacity: 1;
-		transform: translateY(0) scale(1);
-	}
-}
-
-@keyframes shimmer {
-	0% {
-		filter: drop-shadow(0 0 0 rgba(255, 237, 78, 0));
-	}
-	100% {
-		filter: drop-shadow(0 0 24rpx rgba(255, 237, 78, 0.35));
-	}
-}
-
-@keyframes sheet-bounce {
-	0% {
-		opacity: 0;
-		transform: translateY(120%);
-	}
-	70% {
-		opacity: 1;
-		transform: translateY(-2%);
-	}
-	100% {
-		opacity: 1;
-		transform: translateY(0);
-	}
-}
-
-@keyframes fab-glow {
-	0% {
-		opacity: 0.4;
-		transform: scale(0.9);
-	}
-	100% {
-		opacity: 0.85;
-		transform: scale(1.08);
-	}
-}
-
-@media (prefers-reduced-motion: reduce) {
-	.energy-overview.glass--active .energy-stat,
-	.heatmap.glass--active .heatmap-cell,
-	.habits.glass--active .habit-card,
-	.fab::after,
-	.level-progress__fill,
-	.sheet--open {
-		animation: none !important;
-	}
-	.glass,
-	.habit-card,
-	.sheet,
-	.fab {
-		transition-duration: 0.01ms !important;
-	}
-}
+	display: flex; align-items: center; gap: 8rpx; padding: 12rpx 20rpx;
+	background: rgba(255,215,0,0.15); border: 1rpx solid rgba(255,215,0,0.3); border-radius: 999rpx;
+}
+.energy-icon { font-size: 28rpx; }
+.energy-value { font-size: 26rpx; font-weight: 600; color: #ffd700; }
+
+.main { padding: 0 40rpx; box-sizing: border-box; }
+
+/* 1. RPG 角色卡片 */
+.hero-card { padding: 30rpx; margin-bottom: 30rpx; }
+.hero-info { display: flex; align-items: center; gap: 30rpx; }
+.hero-avatar-box { position: relative; width: 120rpx; height: 120rpx; background: rgba(255,255,255,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 4rpx solid rgba(255,255,255,0.2); }
+.hero-avatar { font-size: 64rpx; }
+.hero-level-badge { position: absolute; bottom: -10rpx; background: #6ecbff; color: #0f1b2b; font-size: 20rpx; font-weight: 700; padding: 4rpx 12rpx; border-radius: 20rpx; }
+.hero-stats { flex: 1; display: flex; flex-direction: column; gap: 12rpx; }
+.hero-name-row { display: flex; align-items: center; gap: 12rpx; }
+.hero-name { font-size: 32rpx; font-weight: 600; }
+.hero-title { font-size: 20rpx; color: #ffd700; background: rgba(255,215,0,0.1); padding: 2rpx 8rpx; border-radius: 8rpx; }
+.progress-row { display: flex; align-items: center; gap: 12rpx; }
+.progress-label { font-size: 20rpx; font-weight: 700; color: #a8b8d0; }
+.progress-track { flex: 1; height: 16rpx; background: rgba(0,0,0,0.3); border-radius: 8rpx; overflow: hidden; }
+.progress-bar { height: 100%; background: linear-gradient(90deg, #6ecbff, #5affd0); border-radius: 8rpx; transition: width 0.5s ease; }
+.progress-text { font-size: 20rpx; color: rgba(255,255,255,0.6); min-width: 80rpx; text-align: right; }
+.hero-pet { font-size: 22rpx; color: #ffd700; margin-top: 4rpx; }
+
+/* 2. 游戏 Tab 栏 */
+.game-tabs { display: flex; padding: 10rpx; margin-bottom: 30rpx; justify-content: space-between; }
+.g-tab { flex: 1; text-align: center; padding: 16rpx 0; font-size: 26rpx; color: rgba(255,255,255,0.6); border-radius: 16rpx; transition: all 0.3s; }
+.g-tab--active { background: rgba(255,255,255,0.1); color: #fff; font-weight: 600; }
+
+/* 3. 列表区域 */
+.tab-content { height: calc(100vh - 500rpx); }
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20rpx; }
+.card-title { font-size: 32rpx; font-weight: 600; }
+.card-sub { font-size: 24rpx; color: rgba(255,255,255,0.6); }
+
+/* 习惯卡片 (保留原有样式) */
+.habit-card { display: flex; justify-content: space-between; align-items: center; padding: 24rpx; margin-bottom: 20rpx; transition: all 0.3s; border: 1rpx solid rgba(255,255,255,0.1); }
+.habit-card--checked { border-color: rgba(90,255,208,0.4); background: rgba(90,255,208,0.08); }
+.habit-card__main { flex: 1; display: flex; justify-content: space-between; align-items: center; }
+.habit-card__left { display: flex; align-items: center; gap: 24rpx; }
+.habit-checkbox { width: 44rpx; height: 44rpx; border-radius: 50%; border: 3rpx solid rgba(255,255,255,0.3); display: flex; align-items: center; justify-content: center; font-size: 24rpx; }
+.habit-checkbox--checked { background: #5affd0; border-color: #5affd0; color: #000; }
+.habit-details { display: flex; flex-direction: column; }
+.habit-title { font-size: 30rpx; font-weight: 500; }
+.habit-meta { display: flex; align-items: center; font-size: 22rpx; color: rgba(255,255,255,0.5); gap: 10rpx; }
+.habit-meta__energy { color: #6ecbff; }
+.habit-card__right { display: flex; align-items: center; gap: 10rpx; }
+.habit-streak { text-align: center; padding: 8rpx 16rpx; background: rgba(255,255,255,0.1); border-radius: 12rpx; }
+.habit-streak__value { font-size: 32rpx; font-weight: 700; color: #ffd700; display: block; }
+.habit-streak__label { font-size: 18rpx; color: rgba(255,255,255,0.6); }
+.habit-actions { display: flex; flex-direction: column; gap: 10rpx; margin-left: 20rpx; }
+.habit-action-btn { width: 60rpx; height: 60rpx; line-height: 60rpx; text-align: center; font-size: 24rpx; background: rgba(255,255,255,0.1); border-radius: 12rpx; color: rgba(255,255,255,0.6); padding: 0; }
+
+/* 商店样式 */
+.shop-grid { padding-bottom: 40rpx; }
+.shop-items { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20rpx; }
+.shop-item { padding: 20rpx; display: flex; flex-direction: column; align-items: center; gap: 10rpx; transition: transform 0.2s; border: 1rpx solid rgba(255,255,255,0.1); }
+.shop-item:active { transform: scale(0.96); }
+.shop-item--owned { border-color: #ffd700; background: rgba(255,215,0,0.05); }
+.shop-icon { font-size: 50rpx; }
+.shop-name { font-size: 24rpx; color: rgba(255,255,255,0.9); }
+.shop-btn { font-size: 20rpx; padding: 6rpx 16rpx; background: rgba(255,255,255,0.1); border-radius: 20rpx; margin-top: 6rpx; }
+.shop-btn--owned { background: #ffd700; color: #0f1b2b; font-weight: 600; }
+
+/* 成就样式 */
+.achieve-list { display: flex; flex-direction: column; gap: 20rpx; }
+.achieve-card { display: flex; align-items: center; padding: 24rpx; gap: 24rpx; }
+.achieve-card--locked { opacity: 0.5; filter: grayscale(100%); }
+.achieve-icon-box { font-size: 50rpx; }
+.achieve-info { flex: 1; }
+.achieve-top { display: flex; justify-content: space-between; }
+.achieve-name { font-size: 28rpx; font-weight: 600; margin-bottom: 4rpx; }
+.achieve-status { font-size: 20rpx; color: rgba(255,255,255,0.5); }
+.achieve-desc { font-size: 22rpx; color: rgba(255,255,255,0.6); display: block; margin-bottom: 12rpx; }
+.achieve-progress-bar { height: 8rpx; background: rgba(255,255,255,0.1); border-radius: 4rpx; margin-bottom: 4rpx; overflow: hidden; }
+.achieve-fill { height: 100%; background: #ffd700; }
+
+/* 空状态 */
+.empty { padding: 100rpx 0; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 20rpx; opacity: 0.6; }
+.empty__icon { font-size: 80rpx; }
+.empty__tip { font-size: 26rpx; }
+
+/* FAB */
+.fab { position: fixed; width: 140rpx; height: 140rpx; border-radius: 70rpx; background: linear-gradient(135deg, rgba(90,255,208,0.9), rgba(110,203,255,0.9)); box-shadow: 0 28rpx 46rpx rgba(10, 20, 35, 0.55); bottom: 200rpx; right: 60rpx; display: flex; align-items: center; justify-content: center; color: #0f1b2b; font-size: 90rpx; z-index: 10; }
+.fab__icon { margin-top: -6rpx; }
+
+/* === 弹窗样式 (保留原始 v-if, glass) === 
+    关键修改：去掉 .prevent 
+*/
+.sheet-mask { position: fixed; left: 0; top: 0; width: 100%; height: 100%; background: rgba(10,17,28,0.85); z-index: 11; animation: fade-in 0.4s ease; }
 
 .sheet {
-	position: fixed;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	padding: 42rpx 40rpx 90rpx;
-	border-radius: 46rpx 46rpx 0 0;
-	z-index: 12;
-	max-height: 90vh;
-	overflow-y: auto;
+	position: fixed; left: 0; right: 0; bottom: 0; padding: 42rpx 40rpx 90rpx; border-radius: 46rpx 46rpx 0 0; z-index: 12;
 	transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease;
-	transform: translateY(120%);
-	pointer-events: none;
-	opacity: 0;
+	transform: translateY(120%); opacity: 0; pointer-events: none;
 }
-
-/* 弹窗使用假模糊效果，提升性能 */
+/* 原始 glass 类 + 强制不透明度修复 */
 .sheet.glass {
 	background: rgba(18, 30, 45, 0.95);
-	box-shadow: 0 26rpx 70rpx rgba(9, 20, 35, 0.55),
-		inset 0 1rpx 0 rgba(255, 255, 255, 0.1);
+	box-shadow: 0 26rpx 70rpx rgba(9, 20, 35, 0.55), inset 0 1rpx 0 rgba(255, 255, 255, 0.1);
 }
+.sheet--open { transform: translateY(0); opacity: 1; pointer-events: auto; }
 
-.sheet--open {
-	transform: translateY(0);
-	pointer-events: auto;
-	opacity: 1;
-	animation: sheet-bounce 0.65s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-}
+.sheet__handle { width: 120rpx; height: 10rpx; border-radius: 999rpx; background: rgba(255,255,255,0.35); margin: 0 auto 30rpx; }
+.sheet__header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40rpx; }
+.sheet__title { font-size: 34rpx; font-weight: 600; }
+.sheet__close { width: 60rpx; height: 60rpx; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.08); border-radius: 50%; }
+.sheet__close-icon { font-size: 36rpx; color: rgba(255,255,255,0.8); }
 
-.sheet__handle {
-	width: 120rpx;
-	height: 10rpx;
-	border-radius: 999rpx;
-	background: rgba(255,255,255,0.35);
-	margin: 0 auto 30rpx;
-}
+.form-field { margin-bottom: 40rpx; display: flex; flex-direction: column; gap: 18rpx; }
+.form-label { font-size: 26rpx; color: rgba(255,255,255,0.7); }
+.form-input { background: rgba(255,255,255,0.06); border: 1rpx solid rgba(255,255,255,0.08); border-radius: 24rpx; padding: 24rpx 28rpx; color: #ffffff; font-size: 30rpx; }
 
-.sheet__header {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	margin-bottom: 40rpx;
-}
+.time-slots { display: flex; flex-wrap: wrap; gap: 16rpx; }
+.time-slot { flex: 0 0 calc(33.333% - 12rpx); display: flex; flex-direction: column; align-items: center; gap: 8rpx; padding: 20rpx 12rpx; background: rgba(255,255,255,0.06); border: 2rpx solid rgba(255,255,255,0.1); border-radius: 20rpx; transition: all 0.3s ease; }
+.time-slot--active { background: rgba(110,203,255,0.2); border-color: #6ecbff; }
+.time-slot__icon { font-size: 40rpx; }
+.time-slot__label { font-size: 24rpx; color: rgba(255,255,255,0.9); }
+.time-slot__range { font-size: 20rpx; color: rgba(255,255,255,0.5); }
 
-.sheet__title {
-	font-size: 34rpx;
-	font-weight: 600;
-}
-
-.sheet__close {
-	width: 60rpx;
-	height: 60rpx;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	background: rgba(255,255,255,0.08);
-	border-radius: 50%;
-	transition: all 0.3s ease;
-}
-
-.sheet__close:active {
-	background: rgba(255,123,138,0.2);
-	transform: scale(0.9);
-}
-
-.sheet__close-icon {
-	font-size: 36rpx;
-	color: rgba(255,255,255,0.8);
-	font-weight: 300;
-}
-
-.form-field {
-	margin-bottom: 40rpx;
-	display: flex;
-	flex-direction: column;
-	gap: 18rpx;
-}
-
-.form-label {
-	font-size: 26rpx;
-	color: rgba(255,255,255,0.7);
-}
-
-.form-hint {
-	font-size: 22rpx;
-	color: rgba(255,255,255,0.5);
-	margin-top: 8rpx;
-	line-height: 1.5;
-}
-
-.form-input {
-	background: rgba(255,255,255,0.06);
-	border: 1rpx solid rgba(255,255,255,0.08);
-	border-radius: 24rpx;
-	padding: 24rpx 28rpx;
-	color: #ffffff;
-	font-size: 30rpx;
-}
-
-.form-value {
-	background: rgba(255,255,255,0.06);
-	border: 1rpx solid rgba(255,255,255,0.08);
-	border-radius: 24rpx;
-	padding: 24rpx 28rpx;
-	color: #ffffff;
-	font-size: 30rpx;
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-}
-
-.form-value--picker {
-	flex: 1;
-	margin-left: 16rpx;
-}
-
-.form-value--picker:first-of-type {
-	margin-left: 0;
-}
-
-.form-arrow {
-	font-size: 36rpx;
-	color: rgba(255,255,255,0.45);
-}
-
-.time-slots {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 16rpx;
-}
-
-.time-slot {
-	flex: 0 0 calc(33.333% - 12rpx);
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 8rpx;
-	padding: 20rpx 12rpx;
-	background: rgba(255,255,255,0.06);
-	border: 2rpx solid rgba(255,255,255,0.1);
-	border-radius: 20rpx;
-	transition: all 0.3s ease;
-}
-
-.time-slot--active {
-	background: rgba(110,203,255,0.2);
-	border-color: #6ecbff;
-}
-
-.time-slot__icon {
-	font-size: 40rpx;
-}
-
-.time-slot__label {
-	font-size: 24rpx;
-	color: rgba(255,255,255,0.9);
-	margin-top: 8rpx;
-}
-
-.time-slot__range {
-	font-size: 20rpx;
-	color: rgba(255,255,255,0.5);
-	margin-top: 4rpx;
-}
-
-.sheet__action {
-	margin-top: 20rpx;
-	background: linear-gradient(135deg, rgba(90,255,208,0.85), rgba(110,203,255,0.9));
-	color: #0f1b2b;
-	font-size: 32rpx;
-	font-weight: 600;
-	border: none;
-	border-radius: 24rpx;
-	height: 96rpx;
-	line-height: 96rpx;
-}
-
-.sheet__action::after {
-	border: none;
-}
-
-.sheet__action[disabled] {
-	background: rgba(255,255,255,0.12);
-	color: rgba(255,255,255,0.4);
-}
-
-/* 页面底部装饰 */
-.page-footer {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 12rpx;
-	padding: 30rpx 0 20rpx;
-	opacity: 0.5;
-}
-
-.page-footer__text {
-	font-size: 24rpx;
-	color: rgba(255,255,255,0.6);
-	letter-spacing: 2rpx;
-	text-align: center;
-	font-style: italic;
-}
-
-.page-footer__dots {
-	display: flex;
-	gap: 12rpx;
-}
-
-.page-footer__dots .dot {
-	width: 8rpx;
-	height: 8rpx;
-	border-radius: 50%;
-	background: rgba(255,255,255,0.3);
-	animation: dot-fade 2s infinite;
-}
-
-.page-footer__dots .dot:nth-child(2) {
-	animation-delay: 0.3s;
-}
-
-.page-footer__dots .dot:nth-child(3) {
-	animation-delay: 0.6s;
-}
-
-@keyframes dot-fade {
-	0%, 100% {
-		opacity: 0.3;
-		transform: scale(1);
-	}
-	50% {
-		opacity: 1;
-		transform: scale(1.2);
-	}
-}
+.sheet__action { margin-top: 20rpx; background: linear-gradient(135deg, rgba(90,255,208,0.85), rgba(110,203,255,0.9)); color: #0f1b2b; font-size: 32rpx; font-weight: 600; border: none; border-radius: 24rpx; height: 96rpx; line-height: 96rpx; }
+.sheet__action[disabled] { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.4); }
 
 /* 底部导航栏 */
-.bottom-bar {
-	position: fixed;
-	left: 40rpx;
-	right: 40rpx;
-	bottom: 40rpx;
-	height: 120rpx;
-	border-radius: 60rpx;
-	display: flex;
-	align-items: center;
-	justify-content: space-around;
-	z-index: 3;
-	padding: 0 32rpx;
-	transition: transform 0.3s ease, opacity 0.3s ease;
-}
+.bottom-bar { position: fixed; left: 40rpx; right: 40rpx; bottom: 40rpx; height: 120rpx; border-radius: 60rpx; display: flex; align-items: center; justify-content: space-around; z-index: 3; background: rgba(255, 255, 255, 0.08); border: 1rpx solid rgba(255, 255, 255, 0.12); backdrop-filter: blur(50rpx); }
+.bottom-bar__item { display: flex; flex-direction: column; align-items: center; gap: 10rpx; color: rgba(255,255,255,0.62); transition: all 0.2s; }
+.bottom-bar__item--active { color: #ffffff; transform: translateY(-6rpx); }
+.bottom-bar__icon { font-size: 32rpx; }
+.bottom-bar__label { font-size: 24rpx; }
 
-/* 底部 bar 使用实时动态模糊 */
-.bottom-bar.glass {
-	background: rgba(255, 255, 255, 0.08);
-	border: 1rpx solid rgba(255, 255, 255, 0.12);
-	backdrop-filter: blur(50rpx);
-	-webkit-backdrop-filter: blur(50rpx);
-}
-
-.bottom-bar__item {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 10rpx;
-	font-size: 24rpx;
-	color: rgba(255,255,255,0.62);
-	flex: 1;
-	padding: 10rpx 0;
-	transition: transform 0.25s ease, color 0.25s ease;
-}
-
-.bottom-bar__item--active {
-	color: #ffffff;
-	font-weight: 600;
-	transform: translateY(-6rpx);
-}
-
-.bottom-bar__icon {
-	font-size: 32rpx;
-}
-
-.bottom-bar__label {
-	font-size: 24rpx;
-}
-
+@keyframes fade-in { 0% { opacity: 0; } 100% { opacity: 1; } }
 </style>
-
